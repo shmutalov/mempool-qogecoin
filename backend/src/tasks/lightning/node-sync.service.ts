@@ -1,13 +1,13 @@
 import { chanNumber } from 'bolt07';
-import DB from '../database';
-import logger from '../logger';
-import lightningApi from '../api/lightning/lightning-api-factory';
-import { ILightningApi } from '../api/lightning/lightning-api.interface';
-import channelsApi from '../api/explorer/channels.api';
-import bitcoinClient from '../api/bitcoin/bitcoin-client';
-import bitcoinApi from '../api/bitcoin/bitcoin-api-factory';
-import config from '../config';
-import { IEsploraApi } from '../api/bitcoin/esplora-api.interface';
+import DB from '../../database';
+import logger from '../../logger';
+import channelsApi from '../../api/explorer/channels.api';
+import bitcoinClient from '../../api/bitcoin/bitcoin-client';
+import bitcoinApi from '../../api/bitcoin/bitcoin-api-factory';
+import config from '../../config';
+import { IEsploraApi } from '../../api/bitcoin/esplora-api.interface';
+import lightningApi from '../../api/lightning/lightning-api-factory';
+import { ILightningApi } from '../../api/lightning/lightning-api.interface';
 
 class NodeSyncService {
   constructor() {}

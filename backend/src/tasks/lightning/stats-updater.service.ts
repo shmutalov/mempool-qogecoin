@@ -1,8 +1,8 @@
 
-import DB from '../database';
-import logger from '../logger';
-import lightningApi from '../api/lightning/lightning-api-factory';
 import * as net from 'net';
+import DB from '../../database';
+import logger from '../../logger';
+import lightningApi from '../../api/lightning/lightning-api-factory';
 
 class LightningStatsUpdater {
   constructor() {}
@@ -63,7 +63,7 @@ class LightningStatsUpdater {
   private async $populateHistoricalData() {
     const startTime = '2018-01-13';
     try {
-      const [rows]: any = await DB.query(`SELECT COUNT(*) FROM statistics`);
+      const [rows]: any = await DB.query(`SELECT COUNT(*) FROM lightning_stats`);
       // Only store once per day
       if (rows[0]['COUNT(*)'] > 0) {
         return;
@@ -87,7 +87,7 @@ class LightningStatsUpdater {
           channelsCount++;
         }
 
-        const query = `INSERT INTO statistics(
+        const query = `INSERT INTO lightning_stats(
           added,
           channel_count,
           node_count,
@@ -145,7 +145,7 @@ class LightningStatsUpdater {
           }
         }
 
-        const query = `UPDATE statistics SET node_count = ?, tor_nodes = ?, clearnet_nodes = ?, unannounced_nodes = ? WHERE added = FROM_UNIXTIME(?)`;
+        const query = `UPDATE lightning_stats SET node_count = ?, tor_nodes = ?, clearnet_nodes = ?, unannounced_nodes = ? WHERE added = FROM_UNIXTIME(?)`;
 
         await DB.query(query, [
           nodeCount,
@@ -204,7 +204,7 @@ class LightningStatsUpdater {
         }
       }
 
-      const query = `INSERT INTO statistics(
+      const query = `INSERT INTO lightning_stats(
           added,
           channel_count,
           node_count,
@@ -224,7 +224,7 @@ class LightningStatsUpdater {
         unannouncedNodes
       ]);
     } catch (e) {
-      logger.err('$logLightningStats() error: ' + (e instanceof Error ? e.message : e));
+      logger.err('$logLightningStatsDaily() error: ' + (e instanceof Error ? e.message : e));
     }
   }
 }
