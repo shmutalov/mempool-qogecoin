@@ -44,7 +44,6 @@ class NodeSyncService {
       await this.$lookUpCreationDateFromChain();
       await this.$updateNodeFirstSeen();
       await this.$scanForClosedChannels();
-
       await this.$runClosedChannelsForensics();
 
     } catch (e) {
