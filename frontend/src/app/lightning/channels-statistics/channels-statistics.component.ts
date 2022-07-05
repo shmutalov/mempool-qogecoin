@@ -9,10 +9,14 @@ import { Observable } from 'rxjs';
 })
 export class ChannelsStatisticsComponent implements OnInit {
   @Input() statistics$: Observable<any>;
+  mode: string = 'avg';
 
   constructor() { }
 
   ngOnInit(): void {
   }
 
+  switchMode(mode: 'avg' | 'med') {
+    this.mode = mode;
+  }
 }

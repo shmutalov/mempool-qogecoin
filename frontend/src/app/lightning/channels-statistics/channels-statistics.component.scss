@@ -83,3 +83,19 @@
     }
   }
 }
+
+.widget-toggler {
+  font-size: 12px;
+  position: absolute;
+  top: -20px;
+  right: 3px;
+  text-align: right;
+}
+
+.toggler-option {
+  text-decoration: none;
+}
+
+.inactive {
+  color: #ffffff66;
+}

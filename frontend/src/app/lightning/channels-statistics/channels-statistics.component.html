@@ -1,5 +1,11 @@
+<div class="widget-toggler">
+  <a href="javascript:;" (click)="switchMode('avg')" class="toggler-option" [ngClass]="{'inactive': mode !== 'avg'}"><small>avg</small></a>
+  <span style="color: #ffffff66; font-size: 8px"> | </span>
+  <a href="javascript:;" (click)="switchMode('med')" class="toggler-option" [ngClass]="{'inactive': mode !== 'med'}"><small>med</small></a>
+</div>
+
 <div class="fee-estimation-wrapper" *ngIf="statistics$ | async as statistics; else loadingReward">
-  <div class="fee-estimation-container">
+  <div class="fee-estimation-container" *ngIf="mode === 'avg'">
     <div class="item">
       <h5 class="card-title" i18n="ln.average-capacity">Avg Capacity</h5>
       <div class="card-text">
@@ -23,6 +29,36 @@
       ngbTooltip="The average base fee charged by routing nodes, ignoring base fees > 5000ppm" placement="bottom">
         <div class="card-text">
           {{ statistics.avgBaseFee | number: '1.0-0' }}
+          <span i18n="shared.sat-vbyte|sat/vB">msats</span>
+          <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="fee-estimation-container" *ngIf="mode === 'med'">
+    <div class="item">
+      <h5 class="card-title" i18n="ln.median-capacity">Med Capacity</h5>
+      <div class="card-text">
+        {{ statistics.medianCapacity | number: '1.0-0' }}
+        <span i18n="shared.sat-vbyte|sat/vB">sats</span>
+        <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
+      </div>
+    </div>
+    <div class="item">
+      <h5 class="card-title" i18n="ln.average-feerate">Med Fee Rate</h5>
+      <div class="card-text" i18n-ngbTooltip="ln.median-feerate-desc"
+      ngbTooltip="The average fee rate charged by routing nodes, ignoring fee rates > 0.5% or 5000ppm" placement="bottom">
+        {{ statistics.medianFeeRate | number: '1.0-0' }}
+        <span i18n="shared.sat-vbyte|sat/vB">ppm</span>
+        <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
+      </div>
+    </div>
+    <div class="item">
+      <h5 class="card-title" i18n="ln.median-basefee">Med Base Fee</h5>
+      <div class="card-text" i18n-ngbTooltip="ln.median-basefee-desc"
+      ngbTooltip="The median base fee charged by routing nodes, ignoring base fees > 5000ppm" placement="bottom">
+        <div class="card-text">
+          {{ statistics.medianBaseFee | number: '1.0-0' }}
           <span i18n="shared.sat-vbyte|sat/vB">msats</span>
           <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
         </div>
