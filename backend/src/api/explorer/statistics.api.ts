@@ -38,6 +38,15 @@ class StatisticsApi {
     }
   }
 
+  public async $getStatisticsCount(): Promise<number> {
+    try {
+      const [rows]: any = await DB.query(`SELECT count(*) as count FROM lightning_stats`);
+      return rows[0].count;
+    } catch (e) {
+      logger.err('$getLatestStatistics error: ' + (e instanceof Error ? e.message : e));
+      throw e;
+    }
+  }
 }
 
 export default new StatisticsApi();
