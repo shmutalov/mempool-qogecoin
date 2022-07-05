@@ -9,16 +9,18 @@
       </div>
     </div>
     <div class="item">
-      <h5 class="card-title" i18n="ln.average-fee-rate">Avg Fee Rate</h5>
-      <div class="card-text">
+      <h5 class="card-title" i18n="ln.average-feerate">Avg Fee Rate</h5>
+      <div class="card-text" i18n-ngbTooltip="ln.average-feerate-desc"
+      ngbTooltip="The average fee rate charged by routing nodes, ignoring fee rates > 0.5% or 5000ppm" placement="bottom">
         {{ statistics.avgFeeRate | number: '1.0-0' }}
         <span i18n="shared.sat-vbyte|sat/vB">ppm</span>
         <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
       </div>
     </div>
     <div class="item">
-      <h5 class="card-title" i18n="ln.average-fee-rate">Avg Base Fee</h5>
-      <div class="card-text">
+      <h5 class="card-title" i18n="ln.average-basefee">Avg Base Fee</h5>
+      <div class="card-text" i18n-ngbTooltip="ln.average-basefee-desc"
+      ngbTooltip="The average base fee charged by routing nodes, ignoring base fees > 5000ppm" placement="bottom">
         <div class="card-text">
           {{ statistics.avgBaseFee | number: '1.0-0' }}
           <span i18n="shared.sat-vbyte|sat/vB">msats</span>

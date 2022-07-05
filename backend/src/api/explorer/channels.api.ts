@@ -73,13 +73,16 @@ class ChannelsApi {
 
   public async $getChannelsStats(): Promise<any> {
     try {
+      const ignoredFeeRateThreshold = 5000;
+      const ignoredBaseFeeThreshold = 5000;
+
       let query = `SELECT AVG(capacity) AS avgCapacity FROM channels`;
       const [capacity]: any = await DB.query(query);
 
-      query = `SELECT AVG((node1_fee_rate + node2_fee_rate) / 2) avgFeeRate FROM channels WHERE node1_fee_rate < 1000000 AND node2_fee_rate < 1000000`;
+      query = `SELECT AVG((node1_fee_rate + node2_fee_rate) / 2) avgFeeRate FROM channels WHERE node1_fee_rate < ${ignoredFeeRateThreshold} AND node2_fee_rate < ${ignoredFeeRateThreshold}`;
       const [feeRate]: any = await DB.query(query);
 
-      query = `SELECT AVG((node1_base_fee_mtokens + node2_base_fee_mtokens) / 2) AS avgBaseFee FROM channels WHERE node1_base_fee_mtokens < 1000000 AND node2_base_fee_mtokens < 1000000`;
+      query = `SELECT AVG((node1_base_fee_mtokens + node2_base_fee_mtokens) / 2) AS avgBaseFee FROM channels WHERE node1_base_fee_mtokens < ${ignoredBaseFeeThreshold} AND node2_base_fee_mtokens < ${ignoredBaseFeeThreshold}`;
       const [baseRate]: any = await DB.query(query);
 
       return {
