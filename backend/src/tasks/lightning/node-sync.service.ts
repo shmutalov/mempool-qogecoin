@@ -24,19 +24,21 @@ class NodeSyncService {
 
   private async $runUpdater() {
     try {
+      logger.info(`Updating nodes and channels...`);
+
       const networkGraph = await lightningApi.$getNetworkGraph();
 
       for (const node of networkGraph.nodes) {
         await this.$saveNode(node);
       }
-      logger.debug(`Nodes updated`);
+      logger.info(`Nodes updated.`);
 
       await this.$setChannelsInactive();
 
       for (const channel of networkGraph.channels) {
         await this.$saveChannel(channel);
       }
-      logger.debug(`Channels updated`);
+      logger.info(`Channels updated.`);
 
       await this.$findInactiveNodesAndChannels();
       await this.$lookUpCreationDateFromChain();
@@ -72,21 +74,21 @@ class NodeSyncService {
           await DB.query(query, params);
         }
       }
-      logger.debug(`Node first seen dates scan complete`);
+      logger.info(`Node first seen dates scan complete.`);
     } catch (e) {
       logger.err('$updateNodeFirstSeen() error: ' + (e instanceof Error ? e.message : e));
     }
   }
 
   private async $lookUpCreationDateFromChain() {
-    logger.debug(`Running channel creation date lookup...`);
+    logger.info(`Running channel creation date lookup...`);
     try {
       const channels = await channelsApi.$getChannelsWithoutCreatedDate();
       for (const channel of channels) {
         const transaction = await bitcoinClient.getRawTransaction(channel.transaction_id, 1);
         await DB.query(`UPDATE channels SET created = FROM_UNIXTIME(?) WHERE channels.id = ?`, [transaction.blocktime, channel.id]);
       }
-      logger.debug(`Channel creation dates scan complete`);
+      logger.info(`Channel creation dates scan complete.`);
     } catch (e) {
       logger.err('$setCreationDateFromChain() error: ' + (e instanceof Error ? e.message : e));
     }
@@ -94,7 +96,7 @@ class NodeSyncService {
 
   // Looking for channels whos nodes are inactive
   private async $findInactiveNodesAndChannels(): Promise<void> {
-    logger.debug(`Running inactive channels scan...`);
+    logger.info(`Running inactive channels scan...`);
 
     try {
       // @ts-ignore
@@ -103,7 +105,7 @@ class NodeSyncService {
       for (const channel of channels) {
         await this.$updateChannelStatus(channel.id, 0);
       }
-      logger.debug(`Inactive channels scan complete`);
+      logger.info(`Inactive channels scan complete.`);
     } catch (e) {
       logger.err('$findInactiveNodesAndChannels() error: ' + (e instanceof Error ? e.message : e));
     }
@@ -111,7 +113,7 @@ class NodeSyncService {
 
   private async $scanForClosedChannels(): Promise<void> {
     try {
-      logger.debug(`Starting closed channels scan...`);
+      logger.info(`Starting closed channels scan...`);
       const channels = await channelsApi.$getChannelsByStatus(0);
       for (const channel of channels) {
         const spendingTx = await bitcoinApi.$getOutspend(channel.transaction_id, channel.transaction_vout);
@@ -124,7 +126,7 @@ class NodeSyncService {
           }
         }
       }
-      logger.debug(`Closed channels scan complete`);
+      logger.info(`Closed channels scan complete.`);
     } catch (e) {
       logger.err('$scanForClosedChannels() error: ' + (e instanceof Error ? e.message : e));
     }
@@ -141,7 +143,7 @@ class NodeSyncService {
       return;
     }
     try {
-      logger.debug(`Started running closed channel forensics...`);
+      logger.info(`Started running closed channel forensics...`);
       const channels = await channelsApi.$getClosedChannelsWithoutReason();
       for (const channel of channels) {
         let reason = 0;
@@ -186,7 +188,7 @@ class NodeSyncService {
           await DB.query(`UPDATE channels SET closing_reason = ? WHERE id = ?`, [reason, channel.id]);
         }
       }
-      logger.debug(`Closed channels forensics scan complete`);
+      logger.info(`Closed channels forensics scan complete.`);
     } catch (e) {
       logger.err('$runClosedChannelsForensics() error: ' + (e instanceof Error ? e.message : e));
     }
