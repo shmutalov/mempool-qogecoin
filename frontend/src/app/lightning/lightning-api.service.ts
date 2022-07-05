@@ -56,8 +56,11 @@ export class LightningApiService {
     return this.httpClient.get<any>(this.apiBasePath + '/api/v1/lightning/channels/' + publicKey + '/statistics');
   }
 
-  listStatistics$(): Observable<any> {
-    return this.httpClient.get<any>(this.apiBasePath + '/api/v1/lightning/statistics');
+  listStatistics$(interval: string | undefined): Observable<any> {
+    return this.httpClient.get<any>(
+      this.apiBasePath + '/api/v1/lightning/statistics' +
+      (interval !== undefined ? `/${interval}` : ''), { observe: 'response' }
+    );
   }
 
   getChannelsStatistics$(): Observable<any> {

@@ -57,8 +57,12 @@ export class LightningStatisticsChartComponent implements OnInit {
   ngOnInit(): void {
     let firstRun = true;
 
-    this.seoService.setTitle($localize`:@@mining.hashrate-difficulty:Hashrate and Weight`);
-    this.miningWindowPreference = this.miningService.getDefaultTimespan('24h');
+    if (this.widget) {
+      this.miningWindowPreference = '1y';
+    } else {
+      this.seoService.setTitle($localize`:Channels and Capacity`);
+      this.miningWindowPreference = this.miningService.getDefaultTimespan('all');
+    }
     this.radioGroupForm = this.formBuilder.group({ dateSpan: this.miningWindowPreference });
     this.radioGroupForm.controls.dateSpan.setValue(this.miningWindowPreference);
 
@@ -73,9 +77,10 @@ export class LightningStatisticsChartComponent implements OnInit {
           firstRun = false;
           this.miningWindowPreference = timespan;
           this.isLoading = true;
-          return this.lightningApiService.listStatistics$()
+          return this.lightningApiService.listStatistics$('1y')
             .pipe(
-              tap((data) => {
+              tap((response) => {
+                const data = response.body;
                 this.prepareChartOptions({
                   channel_count: data.map(val => [val.added * 1000, val.channel_count]),
                   capacity: data.map(val => [val.added * 1000, val.total_capacity]),
