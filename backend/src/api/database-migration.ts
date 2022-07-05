@@ -174,7 +174,7 @@ class DatabaseMigration {
         this.uniqueLog(logger.notice, this.blocksTruncatedMessage);
         await this.$executeQuery('TRUNCATE blocks;'); // Need to re-index
         await this.$executeQuery(`ALTER TABLE blocks
-          ADD avg_fee INT UNSIGNED NULL,
+          ADD med_fee INT UNSIGNED NULL,
           ADD avg_fee_rate INT UNSIGNED NULL
         `);
         await this.$executeQuery('ALTER TABLE blocks MODIFY `reward` BIGINT UNSIGNED NOT NULL DEFAULT "0"');
@@ -574,6 +574,12 @@ class DatabaseMigration {
       tor_nodes int(11) NOT NULL,
       clearnet_nodes int(11) NOT NULL,
       unannounced_nodes int(11) NOT NULL,
+      avg_capacity bigint(20) unsigned NOT NULL,
+      avg_fee_rate int(11) unsigned NOT NULL,
+      avg_base_fee_mtokens bigint(20) unsigned NOT NULL,
+      med_capacity bigint(20) unsigned NOT NULL,
+      med_fee_rate int(11) unsigned NOT NULL,
+      med_base_fee_mtokens bigint(20) unsigned NOT NULL,
       PRIMARY KEY (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`;
   }
