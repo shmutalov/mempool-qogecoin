@@ -71,6 +71,29 @@ class ChannelsApi {
     }
   }
 
+  public async $getChannelsStats(): Promise<any> {
+    try {
+      let query = `SELECT AVG(capacity) AS avgCapacity FROM channels`;
+      const [capacity]: any = await DB.query(query);
+
+      query = `SELECT AVG((node1_fee_rate + node2_fee_rate) / 2) avgFeeRate FROM channels WHERE node1_fee_rate < 1000000 AND node2_fee_rate < 1000000`;
+      const [feeRate]: any = await DB.query(query);
+
+      query = `SELECT AVG((node1_base_fee_mtokens + node2_base_fee_mtokens) / 2) AS avgBaseFee FROM channels WHERE node1_base_fee_mtokens < 1000000 AND node2_base_fee_mtokens < 1000000`;
+      const [baseRate]: any = await DB.query(query);
+
+      return {
+        avgCapacity: capacity[0].avgCapacity,
+        avgFeeRate: feeRate[0].avgFeeRate,
+        avgBaseFee: baseRate[0].avgBaseFee,
+      }
+
+    } catch (e) {
+      logger.err('$getChannel error: ' + (e instanceof Error ? e.message : e));
+      throw e;
+    }
+  }
+
   public async $getChannelsByTransactionId(transactionIds: string[]): Promise<any[]> {
     try {
       transactionIds = transactionIds.map((id) => '\'' + id + '\'');

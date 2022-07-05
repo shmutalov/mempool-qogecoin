@@ -7,6 +7,7 @@ class ChannelsRoutes {
 
   public initRoutes(app: Application) {
     app
+      .get(config.MEMPOOL.API_URL_PREFIX + 'lightning/channels/statistics', this.$getChannelsStats)
       .get(config.MEMPOOL.API_URL_PREFIX + 'lightning/channels/txids', this.$getChannelsByTransactionIds)
       .get(config.MEMPOOL.API_URL_PREFIX + 'lightning/channels/search/:search', this.$searchChannelsById)
       .get(config.MEMPOOL.API_URL_PREFIX + 'lightning/channels/:short_id', this.$getChannel)
@@ -31,6 +32,15 @@ class ChannelsRoutes {
         return;
       }
       res.json(channel);
+    } catch (e) {
+      res.status(500).send(e instanceof Error ? e.message : e);
+    }
+  }
+
+  private async $getChannelsStats(req: Request, res: Response) {
+    try {
+      const stats = await channelsApi.$getChannelsStats();
+      res.json(stats);
     } catch (e) {
       res.status(500).send(e instanceof Error ? e.message : e);
     }

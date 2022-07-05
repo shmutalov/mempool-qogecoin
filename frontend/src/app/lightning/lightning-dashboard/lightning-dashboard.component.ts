@@ -13,6 +13,7 @@ export class LightningDashboardComponent implements OnInit {
   nodesByCapacity$: Observable<any>;
   nodesByChannels$: Observable<any>;
   statistics$: Observable<any>;
+  channelsStatistics$: Observable<any>;
 
   constructor(
     private lightningApiService: LightningApiService,
@@ -31,7 +32,8 @@ export class LightningDashboardComponent implements OnInit {
         map((object) => object.topByChannels),
       );
 
-    this.statistics$ = this.lightningApiService.getLatestStatistics$();
-  }
+      this.statistics$ = this.lightningApiService.getLatestStatistics$();
+      this.channelsStatistics$ = this.lightningApiService.getChannelsStatistics$();
+    }
 
 }

@@ -42,7 +42,15 @@ export class LightningApiService {
     return this.httpClient.get<any>(API_BASE_URL + '/nodes/top');
   }
 
+  listChannelStats$(publicKey: string): Observable<any> {
+    return this.httpClient.get<any>(API_BASE_URL + '/channels/' + publicKey + '/statistics');
+  }
+
   listStatistics$(): Observable<any> {
     return this.httpClient.get<any>(API_BASE_URL + '/statistics');
+  }
+
+  getChannelsStatistics$(): Observable<any> {
+    return this.httpClient.get<any>(API_BASE_URL + '/channels/statistics');
   }
 }

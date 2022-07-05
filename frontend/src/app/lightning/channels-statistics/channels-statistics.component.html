@@ -1,0 +1,56 @@
+<div class="fee-estimation-wrapper" *ngIf="statistics$ | async as statistics; else loadingReward">
+  <div class="fee-estimation-container">
+    <div class="item">
+      <h5 class="card-title" i18n="ln.average-capacity">Avg Capacity</h5>
+      <div class="card-text">
+        {{ statistics.avgCapacity | number: '1.0-0' }}
+        <span i18n="shared.sat-vbyte|sat/vB">sats</span>
+        <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
+      </div>
+    </div>
+    <div class="item">
+      <h5 class="card-title" i18n="ln.average-fee-rate">Avg Fee Rate</h5>
+      <div class="card-text">
+        {{ statistics.avgFeeRate | number: '1.0-0' }}
+        <span i18n="shared.sat-vbyte|sat/vB">ppm</span>
+        <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
+      </div>
+    </div>
+    <div class="item">
+      <h5 class="card-title" i18n="ln.average-fee-rate">Avg Base Fee</h5>
+      <div class="card-text">
+        <div class="card-text">
+          {{ statistics.avgBaseFee | number: '1.0-0' }}
+          <span i18n="shared.sat-vbyte|sat/vB">msats</span>
+          <span class="fiat"><app-change [current]="0" [previous]="0"></app-change></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #loadingReward>
+  <div class="fee-estimation-container loading-container">
+    <div class="item">
+      <h5 class="card-title" i18n="mining.rewards">Nodes</h5>
+      <div class="card-text">
+        <div class="skeleton-loader"></div>
+        <div class="skeleton-loader"></div>
+      </div>
+    </div>
+    <div class="item">
+      <h5 class="card-title" i18n="mining.rewards-per-tx">Channels</h5>
+      <div class="card-text">
+        <div class="skeleton-loader"></div>
+        <div class="skeleton-loader"></div>
+      </div>
+    </div>
+    <div class="item">
+      <h5 class="card-title" i18n="mining.average-fee">Average Channel</h5>
+      <div class="card-text">
+        <div class="skeleton-loader"></div>
+        <div class="skeleton-loader"></div>
+      </div>
+    </div>
+  </div>
+</ng-template>
