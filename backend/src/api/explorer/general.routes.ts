@@ -42,7 +42,7 @@ class GeneralLightningRoutes {
 
   private async $getGeneralStats(req: Request, res: Response) {
     try {
-      const statistics = await nodesApi.$getLatestStatistics();
+      const statistics = await statisticsApi.$getLatestStatistics();
       res.json(statistics);
     } catch (e) {
       res.status(500).send(e instanceof Error ? e.message : e);
