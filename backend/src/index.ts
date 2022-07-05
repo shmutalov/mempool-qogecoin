@@ -135,8 +135,10 @@ class Server {
     }
 
     if (config.LIGHTNING.ENABLED) {
-      nodeSyncService.$startService();
-      lightningStatsUpdater.$startService();
+      nodeSyncService.$startService()
+        .then(() => {
+          lightningStatsUpdater.$startService();
+        });
     }
 
     this.server.listen(config.MEMPOOL.HTTP_PORT, () => {

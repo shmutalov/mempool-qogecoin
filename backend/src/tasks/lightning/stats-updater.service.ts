@@ -30,6 +30,8 @@ class LightningStatsUpdater {
   }
 
   private async $logNodeStatsDaily() {
+    logger.debug(`Running daily node stats update...`);
+
     const currentDate = new Date().toISOString().split('T')[0];
     try {
       const [state]: any = await DB.query(`SELECT string FROM state WHERE name = 'last_node_stats'`);
@@ -61,6 +63,8 @@ class LightningStatsUpdater {
 
   // We only run this on first launch
   private async $populateHistoricalData() {
+    logger.debug(`Running historical stats population...`);
+
     const startTime = '2018-01-13';
     try {
       const [rows]: any = await DB.query(`SELECT COUNT(*) FROM lightning_stats`);
@@ -166,6 +170,8 @@ class LightningStatsUpdater {
   }
 
   private async $logLightningStatsDaily() {
+    logger.debug(`Running lightning daily stats log...`);
+
     const currentDate = new Date().toISOString().split('T')[0];
     try {
       const [state]: any = await DB.query(`SELECT string FROM state WHERE name = 'last_node_stats'`);
@@ -223,6 +229,7 @@ class LightningStatsUpdater {
         clearnetNodes,
         unannouncedNodes
       ]);
+      logger.debug(`Lightning daily stats done.`);
     } catch (e) {
       logger.err('$logLightningStatsDaily() error: ' + (e instanceof Error ? e.message : e));
     }

@@ -102,7 +102,7 @@ export class NodesNetworksChartComponent implements OnInit {
           color: 'grey',
           fontSize: 15
         },
-        text: $localize`:@@23555386d8af1ff73f297e89dd4af3f4689fb9dd:Indexing blocks`,
+        text: `Indexing in progess`,
         left: 'center',
         top: 'center'
       };
