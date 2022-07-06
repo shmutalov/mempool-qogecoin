@@ -8,6 +8,9 @@ import logger from '../../../logger';
 class LndApi implements AbstractLightningApi {
   private lnd: any;
   constructor() {
+    if (!config.LIGHTNING.ENABLED) {
+      return;
+    }
     try {
       const tls = fs.readFileSync(config.LND_NODE_AUTH.TLS_CERT_PATH).toString('base64');
       const macaroon = fs.readFileSync(config.LND_NODE_AUTH.MACAROON_PATH).toString('base64');

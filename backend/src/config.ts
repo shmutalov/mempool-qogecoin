@@ -168,7 +168,7 @@ const defaults: IConfig = {
     'DATA_PATH': '/bisq/statsnode-data/btc_mainnet/db'
   },
   'LIGHTNING': {
-    'ENABLED': true,
+    'ENABLED': false,
     'BACKEND': 'lnd'
   },
   'LND_NODE_AUTH': {
