@@ -1,6 +1,7 @@
 import logger from "../../logger";
 import DB from "../../database";
 import lightningApi from "../../api/lightning/lightning-api-factory";
+import channelsApi from "../../api/explorer/channels.api";
 
 class LightningStatsUpdater {
   constructor() {}
@@ -38,20 +39,97 @@ class LightningStatsUpdater {
         return;
       }
 
-      const query = `SELECT nodes.public_key, c1.channels_count_left, c2.channels_count_right, c1.channels_capacity_left, c2.channels_capacity_right FROM nodes LEFT JOIN (SELECT node1_public_key, COUNT(id) AS channels_count_left, SUM(capacity) AS channels_capacity_left FROM channels WHERE channels.status < 2 GROUP BY node1_public_key) c1 ON c1.node1_public_key = nodes.public_key LEFT JOIN (SELECT node2_public_key, COUNT(id) AS channels_count_right, SUM(capacity) AS channels_capacity_right FROM channels WHERE channels.status < 2 GROUP BY node2_public_key) c2 ON c2.node2_public_key = nodes.public_key`;
+      let query = `SELECT nodes.public_key, c1.channels_count_left, c2.channels_count_right, c1.channels_capacity_left, c2.channels_capacity_right 
+        FROM nodes
+        LEFT JOIN (
+          SELECT node1_public_key, COUNT(id) AS channels_count_left, SUM(capacity) AS channels_capacity_left
+          FROM channels
+          WHERE channels.status < 2
+          GROUP BY node1_public_key
+        ) c1 ON c1.node1_public_key = nodes.public_key
+        LEFT JOIN (
+          SELECT node2_public_key, COUNT(id) AS channels_count_right, SUM(capacity) AS channels_capacity_right
+          FROM channels
+          WHERE channels.status < 2
+          GROUP BY node2_public_key
+        ) c2 ON c2.node2_public_key = nodes.public_key
+      `;
       const [nodes]: any = await DB.query(query);
-
+      
       // First run we won't have any nodes yet
       if (nodes.length < 10) {
         return;
       }
 
+      const feeBuckets = [0, 2, 4, 6, 8, 10, 20, 40, 60, 80, 100, 500, 1000, 5000, Number.MAX_SAFE_INTEGER];
       for (const node of nodes) {
+
+        // Fee distribution / averages / median
+        const [channels]: any[] = await DB.query(`SELECT
+          IFNULL(node1_fee_rate, 0) as node1_fee_rate,
+          IFNULL(node2_fee_rate, 0) as node2_fee_rate,
+          IFNULL(node1_base_fee_mtokens, 0) AS node1_base_fee_mtokens,
+          IFNULL(node2_base_fee_mtokens, 0) as node2_base_fee_mtokens,
+          capacity
+          FROM channels
+          WHERE node1_public_key = "${node.public_key}" OR node2_public_key = "${node.public_key}" 
+        `);
+
+        const feeRateDistribution: number[] = [];
+        for (let i = 0; i < feeBuckets.length - 1; ++i) {
+          let capacity = 0;
+          for (const channel of channels) {
+            const feeRate = node.public_key === channel.node1_public_key ? channel.node1_fee_rate : channel.node2_fee_rate;
+            if (feeRate >= feeBuckets[i] && feeRate < feeBuckets[i + 1]) {
+              capacity += channel.capacity;
+            }
+          }
+          feeRateDistribution.push(capacity);
+        }
+
+        let feeRates: number[] = [];
+        let totalFeeRates = 0;
+        let baseFees: number[] = [];
+        let totalBaseFees = 0;
+        const capacities: number[] = [];
+        for (const channel of channels) {
+          const feeRate = parseInt(node.public_key === channel.node1_public_key ? channel.node1_fee_rate : channel.node2_fee_rate, 10);
+          feeRates.push(feeRate);
+          totalFeeRates += feeRate;
+          const baseFee = parseInt(node.public_key === channel.node1_public_key ? channel.node1_base_fee_mtokens : channel.node2_base_fee_mtokens, 10);
+          baseFees.push(baseFee);
+          totalBaseFees += baseFee;
+          capacities.push(channel.capacity);
+        }
+
+        const avgFeeRate = totalFeeRates / feeRates.length;
+        const avgBaseFee = totalBaseFees / baseFees.length;
+
+        feeRates.sort((a, b) => a - b);
+        baseFees.sort((a, b) => a - b);
+        const medFeeRate = feeRates[Math.floor(feeRates.length / 2)];
+        const medBaseFee = baseFees[Math.floor(baseFees.length / 2)];
+
+        capacities.sort((a, b) => a - b);
+        const medianCapacity = capacities[Math.floor(capacities.length / 2)];
+        const capacity = (parseInt(node.channels_capacity_left || 0, 10)) + (parseInt(node.channels_capacity_right || 0, 10));
+        const channelsCount = node.channels_count_left + node.channels_count_right
+
+        // Save stats into db
         await DB.query(
-          `INSERT INTO node_stats(public_key, added, capacity, channels) VALUES (?, NOW(), ?, ?)`,
-          [node.public_key, (parseInt(node.channels_capacity_left || 0, 10)) + (parseInt(node.channels_capacity_right || 0, 10)),
-            node.channels_count_left + node.channels_count_right]);
+          `INSERT INTO node_stats(
+            public_key, added, capacity, channels,
+            avg_fee_rate, avg_base_fee_mtokens, med_capacity, med_fee_rate,
+            med_base_fee_mtokens, fee_rate_distribution)
+          VALUES (
+            ?, NOW(), ?, ?,
+            ?, ?, ?, ?,
+            ?, ?)`,
+          [node.public_key, capacity, channelsCount,
+            avgFeeRate, avgBaseFee, medianCapacity, medFeeRate,
+            medBaseFee, JSON.stringify(feeRateDistribution)]);
       }
+
       await DB.query(`UPDATE state SET string = ? WHERE name = 'last_node_stats'`, [currentDate]);
       logger.info('Daily node stats has updated.');
     } catch (e) {

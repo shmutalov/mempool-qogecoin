@@ -4,7 +4,7 @@ import logger from '../logger';
 import { Common } from './common';
 
 class DatabaseMigration {
-  private static currentVersion = 23;
+  private static currentVersion = 24;
   private queryTimeout = 120000;
   private statisticsAddedIndexed = false;
   private uniqueLogs: string[] = [];
@@ -238,6 +238,15 @@ class DatabaseMigration {
         await this.$executeQuery(this.getCreateNodesQuery(), await this.$checkIfTableExists('nodes'));
         await this.$executeQuery(this.getCreateChannelsQuery(), await this.$checkIfTableExists('channels'));
         await this.$executeQuery(this.getCreateNodesStatsQuery(), await this.$checkIfTableExists('node_stats'));
+      }
+
+      if (databaseSchemaVersion < 24 && isBitcoin === true) {
+        await this.$executeQuery('ALTER TABLE `node_stats` ADD avg_fee_rate int(11) unsigned NOT NULL DEFAULT "0"');
+        await this.$executeQuery('ALTER TABLE `node_stats` ADD avg_base_fee_mtokens bigint(20) unsigned NOT NULL DEFAULT "0"');
+        await this.$executeQuery('ALTER TABLE `node_stats` ADD med_capacity bigint(20) unsigned NOT NULL DEFAULT "0"');
+        await this.$executeQuery('ALTER TABLE `node_stats` ADD med_fee_rate int(11) unsigned NOT NULL DEFAULT "0"');
+        await this.$executeQuery('ALTER TABLE `node_stats` ADD med_base_fee_mtokens bigint(20) unsigned NOT NULL DEFAULT "0"');
+        await this.$executeQuery('ALTER TABLE `node_stats` ADD fee_rate_distribution JSON NOT NULL DEFAULT "[]"');
       }
 
     } catch (e) {
