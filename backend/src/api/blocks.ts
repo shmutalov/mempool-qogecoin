@@ -401,7 +401,6 @@ class Blocks {
         const blockHash = await bitcoinApi.$getBlockHash(blockHeightTip - heightDiff);
         const block = BitcoinApi.convertBlock(await bitcoinClient.getBlock(blockHash));
         this.lastDifficultyAdjustmentTime = block.timestamp;
-        this.currentDifficulty = block.difficulty;
 
         if (blockHeightTip >= 2016) {
           const previousPeriodBlockHash = await bitcoinApi.$getBlockHash(blockHeightTip - heightDiff - 2016);
@@ -469,8 +468,8 @@ class Blocks {
 
         this.previousDifficultyRetarget = (block.difficulty - this.currentDifficulty) / this.currentDifficulty * 100;
         this.lastDifficultyAdjustmentTime = block.timestamp;
-        this.currentDifficulty = block.difficulty;
       }
+      this.currentDifficulty = block.difficulty;     
 
       this.blocks.push(blockExtended);
       if (this.blocks.length > config.MEMPOOL.INITIAL_BLOCKS_AMOUNT * 4) {
