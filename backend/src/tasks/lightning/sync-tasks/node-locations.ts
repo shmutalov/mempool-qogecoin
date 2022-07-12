@@ -21,8 +21,8 @@ export async function $lookupNodeLocation(): Promise<void> {
           const city = lookupCity.get(ip);
           const asn = lookupAsn.get(ip);
           if (city && asn) {
-            const query = `UPDATE nodes SET as_number = ?, city_id = ?, country_id = ?, subdivision_id = ?, longitude = ?, latitude = ?, accuracy_radius = ? WHERE public_key = ?`;
-            const params = [asn.autonomous_system_number, city.city?.geoname_id, city.country?.geoname_id, city.subdivisions ? city.subdivisions[0].geoname_id : null, city.location?.longitude, city.location?.latitude, city.location?.accuracy_radius, node.public_key];
+            const query = `UPDATE nodes SET as_number = ?, city_id = ?, country_id = ?, subdivision_id = ?, longitude = ?, latitude = ?, accuracy_radius = ?, as_organization = ? WHERE public_key = ?`;
+            const params = [asn.autonomous_system_number, city.city?.geoname_id, city.country?.geoname_id, city.subdivisions ? city.subdivisions[0].geoname_id : null, city.location?.longitude, city.location?.latitude, city.location?.accuracy_radius, asn.autonomous_system_organization, node.public_key];
             await DB.query(query, params);
 
              // Store Continent
