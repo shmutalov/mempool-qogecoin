@@ -1,0 +1,22 @@
+<div class="full-container h-100">
+
+  <div class="card-header">
+    <span i18n="lightning.nodes-per-as">Nodes per AS</span>
+    <button class="btn" style="margin: 0 0 4px 0px" (click)="onSaveChart()">
+      <fa-icon [icon]="['fas', 'download']" [fixedWidth]="true"></fa-icon>
+    </button>
+  </div>
+
+  <div class="w-100 h-100">
+    <div class="w-100 h-75 m-auto" *ngIf="nodesPerAsObservable$ | async">
+      <div class="chart" echarts [initOpts]="chartInitOptions" [options]="chartOptions"
+        (chartInit)="onChartInit($event)">
+      </div>
+    </div>
+
+    <div class="text-center loadingGraphs" *ngIf="isLoading">
+      <div class="spinner-border text-light"></div>
+    </div>
+  </div>
+
+</div>
