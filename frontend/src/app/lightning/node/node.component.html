@@ -41,6 +41,10 @@
                 <td i18n="location">Location</td>
                 <td>{{ node.country.en }}</td>
               </tr>
+              <tr *ngIf="!node.country">
+                <td i18n="location">Location</td>
+                <td>Unknown</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -64,10 +68,13 @@
                 <td i18n="address.balance">Color</td>
                 <td><div [ngStyle]="{'color': node.color}">{{ node.color }}</div></td>
               </tr>
-              <tr *ngIf="node.country">
+              <tr>
                 <td i18n="isp">ISP</td>
-                <td>
-                  {{ node.as_organization }} [ASN {{node.as_number}}]
+                <td *ngIf="node.as_organization">
+                  {{ node.as_organization }} [AS {{node.as_number}}]
+                </td>
+                <td *ngIf="!node.as_organization">
+                  Unknown
                 </td>
               </tr>
             </tbody>
