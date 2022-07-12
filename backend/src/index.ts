@@ -35,6 +35,7 @@ import miningRoutes from "./api/mining/mining-routes";
 import bisqRoutes from "./api/bisq/bisq.routes";
 import liquidRoutes from "./api/liquid/liquid.routes";
 import bitcoinRoutes from "./api/bitcoin/bitcoin.routes";
+import nodesApi from "./api/explorer/nodes.api";
 
 class Server {
   private wss: WebSocket.Server | undefined;
@@ -183,6 +184,8 @@ class Server {
       this.currentBackendRetryInterval *= 2;
       this.currentBackendRetryInterval = Math.min(this.currentBackendRetryInterval, 60);
     }
+
+    await nodesApi.$getConnectedNodesForPublicKey('033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025');
   }
 
   setUpWebsocketHandling() {

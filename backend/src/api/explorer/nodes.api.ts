@@ -68,6 +68,36 @@ class NodesApi {
       throw e;
     }
   }
+
+  public async $getConnectedNodesForPublicKey(publicKey: string) {
+    try {
+      // Get outbound nodes connection
+      let query = `SELECT DISTINCT longitude, latitude, nodes.public_key, nodes.alias
+        FROM channels
+        JOIN nodes ON nodes.public_key = node2_public_key
+        WHERE node1_public_key = ?
+        AND nodes.longitude IS NOT NULL
+      `;
+      const [outbound]: any = await DB.query(query, [publicKey]);
+
+      // Get inbound nodes connection
+      query = `SELECT DISTINCT longitude, latitude, nodes.public_key, nodes.alias
+        FROM channels
+        JOIN nodes ON nodes.public_key = node1_public_key
+        WHERE node2_public_key = ?
+        AND nodes.longitude IS NOT NULL
+      `;
+      const [inbound]: any = await DB.query(query, [publicKey]);
+
+      return {
+        outbound: outbound.map((node) => [node.public_key, node.alias, node.longitude, node.latitude]),
+        inbound: inbound.map((node) => [node.public_key, node.alias, node.longitude, node.latitude]),
+      };
+    } catch (e) {
+      logger.err(`Cannot get connected nodes list for public key ${publicKey}. Reason: ${e instanceof Error ? e.message : e}`);
+      throw e;
+    }
+  }
 }
 
 export default new NodesApi();
