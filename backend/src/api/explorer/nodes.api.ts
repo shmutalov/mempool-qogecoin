@@ -125,12 +125,18 @@ class NodesApi {
 
   public async $getNodesPerCountry(country: string) {
     try {
-      const query = `SELECT nodes.* FROM nodes
-        JOIN geo_names ON geo_names.id = nodes.country_id
-        WHERE LOWER(json_extract(names, '$.en')) = ?
+      const query = `SELECT nodes.*, geo_names_country.names as country, geo_names_city.names as city
+      FROM nodes
+      LEFT JOIN geo_names geo_names_country ON geo_names_country.id = nodes.country_id
+      LEFT JOIN geo_names geo_names_city ON geo_names_city.id = nodes.city_id
+      WHERE LOWER(json_extract(geo_names_country.names, '$.en')) = ?
       `;
 
       const [rows]: any = await DB.query(query, [`"${country}"`]);
+      for (let i = 0; i < rows.length; ++i) {
+        rows[i].city = JSON.parse(rows[i].city);
+        rows[i].country = JSON.parse(rows[i].country);
+      }
       return rows;
     } catch (e) {
       logger.err(`Cannot get nodes for country ${country}. Reason: ${e instanceof Error ? e.message : e}`);

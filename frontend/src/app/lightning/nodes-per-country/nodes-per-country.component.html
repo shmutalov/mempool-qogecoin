@@ -1,0 +1,30 @@
+<div class="container-xl full-height" style="min-height: 335px">
+  <h1 class="float-left" i18n="lightning.nodes-in-country">Nodes in {{ country }}</h1>
+
+  <div style="min-height: 295px">
+    <table class="table table-borderless">
+      <thead>
+        <th class="height text-left" i18n="lightning.alias">Alias</th>
+        <th class="height text-left" i18n="lightning.sockets">First seen</th>
+        <th class="height text-left" i18n="lightning.sockets">Last update</th>
+        <th class="height text-left" i18n="lightning.sockets">City</th>
+      </thead>
+      <tbody *ngIf="nodes$ | async as nodes">
+        <tr *ngFor="let node of nodes; let i= index; trackBy: trackByPublicKey">
+          <td class="text-left">
+            <a [routerLink]="['/lightning/node/' + node.public_key | relativeUrl, node.id]">{{ node.alias }}</a>
+          </td>
+          <td class="text-left">
+            {{ node.first_seen | date:'yyyy-MM-dd HH:mm' }}
+          </td>
+          <td class="text-left">
+            {{ node.updated_at | date:'yyyy-MM-dd HH:mm' }}
+          </td>
+          <td class="text-left">
+            {{ node?.city?.en ?? 'Unknown' }}
+          </td>
+      </tbody>
+    </table>
+  </div>
+
+</div>
