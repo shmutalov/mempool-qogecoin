@@ -12,7 +12,7 @@
       <tbody *ngIf="nodes$ | async as nodes">
         <tr *ngFor="let node of nodes; let i= index; trackBy: trackByPublicKey">
           <td class="text-left">
-            <a [routerLink]="['/lightning/node/' + node.public_key | relativeUrl, node.id]">{{ node.alias }}</a>
+            <a [routerLink]="['/lightning/node/' | relativeUrl, node.public_key]">{{ node.alias }}</a>
           </td>
           <td class="text-left">
             {{ node.first_seen | date:'yyyy-MM-dd HH:mm' }}
