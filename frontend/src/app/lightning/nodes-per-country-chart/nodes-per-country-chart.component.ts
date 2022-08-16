@@ -1,19 +1,23 @@
-import { ChangeDetectionStrategy, Component, OnInit, HostBinding } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, HostBinding, NgZone } from '@angular/core';
+import { Router } from '@angular/router';
 import { EChartsOption, PieSeriesOption } from 'echarts';
 import { map, Observable, share, tap } from 'rxjs';
 import { chartColors } from 'src/app/app.constants';
 import { ApiService } from 'src/app/services/api.service';
 import { SeoService } from 'src/app/services/seo.service';
+import { StateService } from 'src/app/services/state.service';
 import { download } from 'src/app/shared/graphs.utils';
 import { AmountShortenerPipe } from 'src/app/shared/pipes/amount-shortener.pipe';
+import { RelativeUrlPipe } from 'src/app/shared/pipes/relative-url/relative-url.pipe';
+import { getFlagEmoji } from 'src/app/shared/graphs.utils';
 
 @Component({
-  selector: 'app-nodes-per-as-chart',
-  templateUrl: './nodes-per-as-chart.component.html',
-  styleUrls: ['./nodes-per-as-chart.component.scss'],
+  selector: 'app-nodes-per-country-chart',
+  templateUrl: './nodes-per-country-chart.component.html',
+  styleUrls: ['./nodes-per-country-chart.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NodesPerAsChartComponent implements OnInit {
+export class NodesPerCountryChartComponent implements OnInit {
   miningWindowPreference: string;
 
   isLoading = true;
@@ -26,35 +30,40 @@ export class NodesPerAsChartComponent implements OnInit {
 
   @HostBinding('attr.dir') dir = 'ltr';
 
-  nodesPerAsObservable$: Observable<any>;
+  nodesPerCountryObservable$: Observable<any>;
 
   constructor(
     private apiService: ApiService,
     private seoService: SeoService,
-    private amountShortenerPipe: AmountShortenerPipe
+    private amountShortenerPipe: AmountShortenerPipe,
+    private zone: NgZone,
+    private stateService: StateService,
+    private router: Router,
   ) {
   }
 
   ngOnInit(): void {
-    this.seoService.setTitle($localize`Lightning nodes per ISP`);
+    this.seoService.setTitle($localize`Lightning nodes per country`);
 
-    this.nodesPerAsObservable$ = this.apiService.getNodesPerAs()
+    this.nodesPerCountryObservable$ = this.apiService.getNodesPerCountry()
       .pipe(
-        tap(data => {
-          this.isLoading = false;
-          this.prepareChartOptions(data);
-        }),
         map(data => {
           for (let i = 0; i < data.length; ++i) {
             data[i].rank = i + 1;
+            data[i].iso = data[i].iso.toLowerCase();
+            data[i].flag = getFlagEmoji(data[i].iso);
           }
           return data.slice(0, 100);
+        }),
+        tap(data => {
+          this.isLoading = false;
+          this.prepareChartOptions(data);
         }),
         share()
       );
   }
 
-  generateChartSerieData(as) {
+  generateChartSerieData(country) {
     const shareThreshold = this.isMobile() ? 2 : 1;
     const data: object[] = [];
     let totalShareOther = 0;
@@ -65,15 +74,15 @@ export class NodesPerAsChartComponent implements OnInit {
       edgeDistance = 0;
     }
 
-    as.forEach((as) => {
-      if (as.share < shareThreshold) {
-        totalShareOther += as.share;
-        totalNodeOther += as.count;
+    country.forEach((country) => {
+      if (country.share < shareThreshold) {
+        totalShareOther += country.share;
+        totalNodeOther += country.count;
         return;
       }
       data.push({
-        value: as.share,
-        name: as.name + (this.isMobile() ? `` : ` (${as.share}%)`),
+        value: country.share,
+        name: country.name.en + (this.isMobile() ? `` : ` (${country.share}%)`),
         label: {
           overflow: 'truncate',
           color: '#b1b1b1',
@@ -90,13 +99,13 @@ export class NodesPerAsChartComponent implements OnInit {
           },
           borderColor: '#000',
           formatter: () => {
-            return `<b style="color: white">${as.name} (${as.share}%)</b><br>` +
-              $localize`${as.count.toString()} nodes<br>` +
-              $localize`${this.amountShortenerPipe.transform(as.capacity / 100000000, 2)} BTC capacity`
+            return `<b style="color: white">${country.name.en} (${country.share}%)</b><br>` +
+              $localize`${country.count.toString()} nodes<br>` +
+              $localize`${this.amountShortenerPipe.transform(country.capacity / 100000000, 2)} BTC capacity`
             ;
           }
         },
-        data: as.slug,
+        data: country.iso,
       } as PieSeriesOption);
     });
 
@@ -124,20 +133,22 @@ export class NodesPerAsChartComponent implements OnInit {
         formatter: () => {
           return `<b style="color: white">${'Other'} (${totalShareOther.toFixed(2)}%)</b><br>` +
             totalNodeOther.toString() + ` nodes`;
-        }
+        },
       },
+      data: 9999 as any
     } as PieSeriesOption);
 
     return data;
   }
 
-  prepareChartOptions(as) {
+  prepareChartOptions(country) {
     let pieSize = ['20%', '80%']; // Desktop
     if (this.isMobile()) {
       pieSize = ['15%', '60%'];
     }
 
     this.chartOptions = {
+      animation: false,
       color: chartColors,
       tooltip: {
         trigger: 'item',
@@ -152,7 +163,7 @@ export class NodesPerAsChartComponent implements OnInit {
           name: 'Mining pool',
           type: 'pie',
           radius: pieSize,
-          data: this.generateChartSerieData(as),
+          data: this.generateChartSerieData(country),
           labelLine: {
             lineStyle: {
               width: 2,
@@ -193,6 +204,16 @@ export class NodesPerAsChartComponent implements OnInit {
       return;
     }
     this.chartInstance = ec;
+
+    this.chartInstance.on('click', (e) => {
+      if (e.data.data === 9999) { // "Other"
+        return;
+      }
+      this.zone.run(() => {
+        const url = new RelativeUrlPipe(this.stateService).transform(`/lightning/nodes/country/${e.data.data}`);
+        this.router.navigate([url]);
+      });
+    });
   }
 
   onSaveChart() {
@@ -202,7 +223,7 @@ export class NodesPerAsChartComponent implements OnInit {
     download(this.chartInstance.getDataURL({
       pixelRatio: 2,
       excludeComponents: ['dataZoom'],
-    }), `ln-nodes-per-as-${this.timespan}-${Math.round(now.getTime() / 1000)}.svg`);
+    }), `lightning-nodes-per-country-${Math.round(now.getTime() / 1000)}.svg`);
     this.chartOptions.backgroundColor = 'none';
     this.chartInstance.setOption(this.chartOptions);
   }

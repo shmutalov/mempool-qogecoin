@@ -4,13 +4,13 @@ import logger from '../logger';
 import { Common } from './common';
 
 class DatabaseMigration {
-  private static currentVersion = 32;
+  private static currentVersion = 37;
   private queryTimeout = 120000;
   private statisticsAddedIndexed = false;
   private uniqueLogs: string[] = [];
 
-  private blocksTruncatedMessage = `'blocks' table has been truncated. Re-indexing from scratch.`;
-  private hashratesTruncatedMessage = `'hashrates' table has been truncated. Re-indexing from scratch.`;
+  private blocksTruncatedMessage = `'blocks' table has been truncated.`;
+  private hashratesTruncatedMessage = `'hashrates' table has been truncated.`;
 
   /**
    * Avoid printing multiple time the same message
@@ -256,7 +256,9 @@ class DatabaseMigration {
     }
 
     if (databaseSchemaVersion < 26 && isBitcoin === true) {
-      this.uniqueLog(logger.notice, `'lightning_stats' table has been truncated. Will re-generate historical data from scratch.`);
+      if (config.LIGHTNING.ENABLED) {
+        this.uniqueLog(logger.notice, `'lightning_stats' table has been truncated.`);
+      }
       await this.$executeQuery(`TRUNCATE lightning_stats`);
       await this.$executeQuery('ALTER TABLE `lightning_stats` ADD tor_nodes int(11) NOT NULL DEFAULT "0"');
       await this.$executeQuery('ALTER TABLE `lightning_stats` ADD clearnet_nodes int(11) NOT NULL DEFAULT "0"');
@@ -273,6 +275,9 @@ class DatabaseMigration {
     }
     
     if (databaseSchemaVersion < 28 && isBitcoin === true) {
+      if (config.LIGHTNING.ENABLED) {
+        this.uniqueLog(logger.notice, `'lightning_stats' and 'node_stats' tables have been truncated.`);
+      }
       await this.$executeQuery(`TRUNCATE lightning_stats`);
       await this.$executeQuery(`TRUNCATE node_stats`);
       await this.$executeQuery(`ALTER TABLE lightning_stats MODIFY added DATE`);
@@ -301,6 +306,27 @@ class DatabaseMigration {
 
     if (databaseSchemaVersion < 32 && isBitcoin == true) {
       await this.$executeQuery('ALTER TABLE `blocks_summaries` ADD `template` JSON DEFAULT "[]"');
+    }
+
+    if (databaseSchemaVersion < 33 && isBitcoin == true) {
+      await this.$executeQuery('ALTER TABLE `geo_names` CHANGE `type` `type` enum("city","country","division","continent","as_organization", "country_iso_code") NOT NULL');
+    }
+
+    if (databaseSchemaVersion < 34 && isBitcoin == true) {
+      await this.$executeQuery('ALTER TABLE `lightning_stats` ADD clearnet_tor_nodes int(11) NOT NULL DEFAULT "0"');
+    }
+
+    if (databaseSchemaVersion < 35 && isBitcoin == true) {
+      await this.$executeQuery('DELETE from `lightning_stats` WHERE added > "2021-09-19"');
+      await this.$executeQuery('ALTER TABLE `lightning_stats` ADD CONSTRAINT added_unique UNIQUE (added);');
+    }
+
+    if (databaseSchemaVersion < 36 && isBitcoin == true) {
+      await this.$executeQuery('ALTER TABLE `nodes` ADD status TINYINT NOT NULL DEFAULT "1"');
+    }
+
+    if (databaseSchemaVersion < 37 && isBitcoin == true) {
+      await this.$executeQuery(this.getCreateLNNodesSocketsTableQuery(), await this.$checkIfTableExists('nodes_sockets'));
     }
   }
 
@@ -715,7 +741,7 @@ class DatabaseMigration {
       names text DEFAULT NULL,
       UNIQUE KEY id (id,type),
       KEY id_2 (id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`;
   }
 
   private getCreateBlocksPricesTableQuery(): string {
@@ -724,6 +750,16 @@ class DatabaseMigration {
       price_id int(10) unsigned NOT NULL,
       PRIMARY KEY (height),
       INDEX (price_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`;
+  }
+
+  private getCreateLNNodesSocketsTableQuery(): string {
+    return `CREATE TABLE IF NOT EXISTS nodes_sockets (
+      public_key varchar(66) NOT NULL,
+      socket varchar(100) NOT NULL,
+      type enum('ipv4', 'ipv6', 'torv2', 'torv3', 'i2p', 'dns', 'websocket') NULL,
+      UNIQUE KEY public_key_socket (public_key, socket),
+      INDEX (public_key)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`;
   }
 

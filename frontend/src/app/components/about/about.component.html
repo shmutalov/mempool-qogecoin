@@ -25,12 +25,6 @@
     </a>
   </div>
 
-  <br><br>
-  <div class="sponsor-button">
-    <button [hidden]="showNavigateToSponsor" type="button" class="btn btn-primary" (click)="sponsor()" i18n="about.become-a-sponsor">Become a sponsor ❤️</button>
-    <ng-container *ngIf="showNavigateToSponsor" i18n="about.navigate-to-sponsor">Navigate to <a href="https://mempool.space/sponsor" target="_blank">https://mempool.space/sponsor</a> to sponsor</ng-container>
-  </div>
-
   <div class="enterprise-sponsor">
     <h3 i18n="about.sponsors.enterprise.withRocket">Enterprise Sponsors 🚀</h3>
     <div class="wrapper">
@@ -297,7 +291,7 @@
   </div>
 
   <ng-container *ngIf="translators$ | async | keyvalue as translators else loadingSponsors">
-    <div class="community-sponsor">
+    <div class="project-translators">
       <h3 i18n="about.translators">Project Translators</h3>
       <div class="wrapper">
         <ng-template ngFor let-translator [ngForOf]="translators">
