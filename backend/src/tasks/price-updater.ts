@@ -9,6 +9,7 @@ import CoinbaseApi from './price-feeds/coinbase-api';
 import FtxApi from './price-feeds/ftx-api';
 import GeminiApi from './price-feeds/gemini-api';
 import KrakenApi from './price-feeds/kraken-api';
+import ExbitronApi from './price-feeds/exbitron-api';
 
 export interface PriceFeed {
   name: string;
@@ -52,6 +53,7 @@ class PriceUpdater {
     this.feeds.push(new CoinbaseApi());
     this.feeds.push(new BitfinexApi());
     this.feeds.push(new GeminiApi());
+    this.feeds.push(new ExbitronApi());
   }
 
   public getEmptyPricesObj(): Prices {
