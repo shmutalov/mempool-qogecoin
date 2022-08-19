@@ -137,7 +137,7 @@ export class NodesPerISPChartComponent implements OnInit {
           formatter: () => {
             return `<b style="color: white">${as.name} (${as.share}%)</b><br>` +
               $localize`${as.count.toString()} nodes<br>` +
-              $localize`${this.amountShortenerPipe.transform(as.capacity / 100000000, 2)} BTC capacity`
+              $localize`${this.amountShortenerPipe.transform(as.capacity / 100000000, 2)} QOGE capacity`
             ;
           }
         },

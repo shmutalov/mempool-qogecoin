@@ -258,9 +258,9 @@ export const restApiDocsData = [
           commonJS: [],
           curl: [],
           response: `{
-  BTC: {
-    code: 'BTC',
-    name: 'Bitcoin',
+  QOGE: {
+    code: 'QOGE',
+    name: 'Qogecoin',
     precision: 8,
     _type: 'crypto'
   }
@@ -309,11 +309,11 @@ export const restApiDocsData = [
         codeSampleSignet: emptyCodeSample,
         codeSampleLiquid: emptyCodeSample,
         codeSampleBisq: {
-          esModule: ['BTC_USD'],
-          commonJS: ['BTC_USD'],
-          curl: ['BTC_USD'],
+          esModule: ['QOGE_USD'],
+          commonJS: ['QOGE_USD'],
+          curl: ['QOGE_USD'],
           response: `{
-  btc_usd: {
+  qoge_usd: {
     buys: [
       '4.56941560',
       ...
@@ -367,9 +367,9 @@ export const restApiDocsData = [
         codeSampleSignet: emptyCodeSample,
         codeSampleLiquid: emptyCodeSample,
         codeSampleBisq: {
-          esModule: ['BTC_USD'],
-          commonJS: ['BTC_USD'],
-          curl: ['BTC_USD'],
+          esModule: ['QOGE_USD'],
+          commonJS: ['QOGE_USD'],
+          curl: ['QOGE_USD'],
           response: `[
   {
     period_start: 1609459200,
@@ -422,21 +422,21 @@ export const restApiDocsData = [
         codeSampleSignet: emptyCodeSample,
         codeSampleLiquid: emptyCodeSample,
         codeSampleBisq: {
-          esModule: ['BTC_USD'],
-          commonJS: ['BTC_USD'],
-          curl: ['BTC_USD'],
+          esModule: ['QOGE_USD'],
+          commonJS: ['QOGE_USD'],
+          curl: ['QOGE_USD'],
           response: `{
-    btc_brl: {
-      pair: 'btc_brl',
-      lname: 'Bitcoin',
+    qoge_brl: {
+      pair: 'qoge_brl',
+      lname: 'Qogecoin',
       rname: 'Brazilian Real',
-      lsymbol: 'BTC',
+      lsymbol: 'QOGE',
       rsymbol: 'BRL',
       lprecision: 8,
       rprecision: 2,
       ltype: 'crypto',
       rtype: 'fiat',
-      name: 'Bitcoin/Brazilian Real'
+      name: 'Qogecoin/Brazilian Real'
     },
     ...
 }`,
@@ -483,11 +483,11 @@ export const restApiDocsData = [
         codeSampleSignet: emptyCodeSample,
         codeSampleLiquid: emptyCodeSample,
         codeSampleBisq: {
-          esModule: ['BTC_USD'],
-          commonJS: ['BTC_USD'],
-          curl: ['BTC_USD'],
+          esModule: ['QOGE_USD'],
+          commonJS: ['QOGE_USD'],
+          curl: ['QOGE_USD'],
           response: `{
-  btc_usd: {
+  qoge_usd: {
     buys: [
       {
         offer_id: "ORHL1BE-0c193d04-be60-4657-ba42-cc172bb4ae5d-172",
@@ -561,9 +561,9 @@ export const restApiDocsData = [
         codeSampleSignet: emptyCodeSample,
         codeSampleLiquid: emptyCodeSample,
         codeSampleBisq: {
-          esModule: ['BTC_USD'],
-          commonJS: ['BTC_USD'],
-          curl: ['BTC_USD'],
+          esModule: ['QOGE_USD'],
+          commonJS: ['QOGE_USD'],
+          curl: ['QOGE_USD'],
           response: `{
   last: "53923.20570000",
   high: "53923.20570000",
@@ -616,9 +616,9 @@ export const restApiDocsData = [
         codeSampleSignet: emptyCodeSample,
         codeSampleLiquid: emptyCodeSample,
         codeSampleBisq: {
-          esModule: ['BTC_USD', '1'],
-          commonJS: ['BTC_USD', '1'],
-          curl: ['BTC_USD', '1'],
+          esModule: ['QOGE_USD', '1'],
+          commonJS: ['QOGE_USD', '1'],
+          curl: ['QOGE_USD', '1'],
           response: `[
   {
     price: "53923.20570000",
@@ -671,9 +671,9 @@ export const restApiDocsData = [
         codeSampleSignet: emptyCodeSample,
         codeSampleLiquid: emptyCodeSample,
         codeSampleBisq: {
-          esModule: ['BTC_USD', 'BTC'],
-          commonJS: ['BTC_USD', 'BTC'],
-          curl: ['BTC_USD', 'BTC'],
+          esModule: ['QOGE_USD', 'QOGE'],
+          commonJS: ['QOGE_USD', 'QOGE'],
+          curl: ['QOGE_USD', 'QOGE'],
           response: `[
   {
     period_start: 1451606400,

@@ -86,14 +86,14 @@ class PriceUpdater {
         await this.$updatePrice();
       }
     } catch (e) {
-      logger.err(`Cannot save BTC prices in db. Reason: ${e instanceof Error ? e.message : e}`);
+      logger.err(`Cannot save QOGE prices in db. Reason: ${e instanceof Error ? e.message : e}`);
     }
 
     this.running = false;
   }
 
   /**
-   * Fetch last BTC price from exchanges, average them, and save it in the database once every hour
+   * Fetch last QOGE price from exchanges, average them, and save it in the database once every hour
    */
   private async $updatePrice(): Promise<void> {
     if (this.lastRun === 0 && config.DATABASE.ENABLED === true) {
@@ -119,14 +119,14 @@ class PriceUpdater {
             if (price > 0) {
               prices.push(price);
             }
-            logger.debug(`${feed.name} BTC/${currency} price: ${price}`);
+            logger.debug(`${feed.name} QOGE/${currency} price: ${price}`);
           } catch (e) {
-            logger.debug(`Could not fetch BTC/${currency} price at ${feed.name}. Reason: ${(e instanceof Error ? e.message : e)}`);
+            logger.debug(`Could not fetch QOGE/${currency} price at ${feed.name}. Reason: ${(e instanceof Error ? e.message : e)}`);
           }
         }
       }
       if (prices.length === 1) {
-        logger.debug(`Only ${prices.length} feed available for BTC/${currency} price`);
+        logger.debug(`Only ${prices.length} feed available for QOGE/${currency} price`);
       }
 
       // Compute average price, non weighted
@@ -134,7 +134,7 @@ class PriceUpdater {
       this.latestPrices[currency] = Math.round((prices.reduce((partialSum, a) => partialSum + a, 0)) / prices.length);
     }
 
-    logger.info(`Latest BTC fiat averaged price: ${JSON.stringify(this.latestPrices)}`);
+    logger.info(`Latest QOGE fiat averaged price: ${JSON.stringify(this.latestPrices)}`);
 
     if (config.DATABASE.ENABLED === true) {
       // Save everything in db
