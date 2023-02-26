@@ -1,6 +1,6 @@
 import { Component, OnInit, LOCALE_ID, Inject, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { FormGroup, FormBuilder } from '@angular/forms';
+import { UntypedFormGroup, UntypedFormBuilder } from '@angular/forms';
 import { of, merge} from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
@@ -8,10 +8,10 @@ import { OptimizedMempoolStats } from '../../interfaces/node-api.interface';
 import { WebsocketService } from '../../services/websocket.service';
 import { ApiService } from '../../services/api.service';
 
-import { StateService } from 'src/app/services/state.service';
-import { SeoService } from 'src/app/services/seo.service';
-import { StorageService } from 'src/app/services/storage.service';
-import { feeLevels, chartColors } from 'src/app/app.constants';
+import { StateService } from '../../services/state.service';
+import { SeoService } from '../../services/seo.service';
+import { StorageService } from '../../services/storage.service';
+import { feeLevels, chartColors } from '../../app.constants';
 import { MempoolGraphComponent } from '../mempool-graph/mempool-graph.component';
 import { IncomingTransactionsGraphComponent } from '../incoming-transactions-graph/incoming-transactions-graph.component';
 
@@ -39,7 +39,7 @@ export class StatisticsComponent implements OnInit {
   mempoolUnconfirmedTransactionsData: any;
   mempoolTransactionsWeightPerSecondData: any;
 
-  radioGroupForm: FormGroup;
+  radioGroupForm: UntypedFormGroup;
   graphWindowPreference: string;
   inverted: boolean;
   feeLevelDropdownData = [];
@@ -47,7 +47,7 @@ export class StatisticsComponent implements OnInit {
 
   constructor(
     @Inject(LOCALE_ID) private locale: string,
-    private formBuilder: FormBuilder,
+    private formBuilder: UntypedFormBuilder,
     private route: ActivatedRoute,
     private websocketService: WebsocketService,
     private apiService: ApiService,

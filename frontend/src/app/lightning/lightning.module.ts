@@ -12,9 +12,11 @@ import { ChannelsListComponent } from './channels-list/channels-list.component';
 import { ChannelComponent } from './channel/channel.component';
 import { LightningWrapperComponent } from './lightning-wrapper/lightning-wrapper.component';
 import { ChannelBoxComponent } from './channel/channel-box/channel-box.component';
+import { ChannelCloseBoxComponent } from './channel/channel-close-box/channel-close-box.component';
 import { ClosingTypeComponent } from './channel/closing-type/closing-type.component';
 import { LightningStatisticsChartComponent } from './statistics-chart/lightning-statistics-chart.component';
 import { NodeStatisticsChartComponent } from './node-statistics-chart/node-statistics-chart.component';
+import { NodeFeeChartComponent } from './node-fee-chart/node-fee-chart.component';
 import { GraphsModule } from '../graphs/graphs.module';
 import { NodesNetworksChartComponent } from './nodes-networks-chart/nodes-networks-chart.component';
 import { ChannelsStatisticsComponent } from './channels-statistics/channels-statistics.component';
@@ -24,17 +26,27 @@ import { NodesPerISP } from './nodes-per-isp/nodes-per-isp.component';
 import { NodesPerCountryChartComponent } from '../lightning/nodes-per-country-chart/nodes-per-country-chart.component';
 import { NodesMap } from '../lightning/nodes-map/nodes-map.component';
 import { NodesChannelsMap } from '../lightning/nodes-channels-map/nodes-channels-map.component';
+import { NodesRanking } from '../lightning/nodes-ranking/nodes-ranking.component';
+import { TopNodesPerChannels } from '../lightning/nodes-ranking/top-nodes-per-channels/top-nodes-per-channels.component';
+import { TopNodesPerCapacity } from '../lightning/nodes-ranking/top-nodes-per-capacity/top-nodes-per-capacity.component';
+import { OldestNodes } from '../lightning/nodes-ranking/oldest-nodes/oldest-nodes.component';
+import { NodesRankingsDashboard } from '../lightning/nodes-rankings-dashboard/nodes-rankings-dashboard.component';
+import { NodeChannels } from '../lightning/nodes-channels/node-channels.component';
+import { GroupComponent } from './group/group.component';
+
 @NgModule({
   declarations: [
     LightningDashboardComponent,
     NodesListComponent,
     NodeStatisticsComponent,
     NodeStatisticsChartComponent,
+    NodeFeeChartComponent,
     NodeComponent,
     ChannelsListComponent,
     ChannelComponent,
     LightningWrapperComponent,
     ChannelBoxComponent,
+    ChannelCloseBoxComponent,
     ClosingTypeComponent,
     LightningStatisticsChartComponent,
     NodesNetworksChartComponent,
@@ -45,6 +57,13 @@ import { NodesChannelsMap } from '../lightning/nodes-channels-map/nodes-channels
     NodesPerCountryChartComponent,
     NodesMap,
     NodesChannelsMap,
+    NodesRanking,
+    TopNodesPerChannels,
+    TopNodesPerCapacity,
+    OldestNodes,
+    NodesRankingsDashboard,
+    NodeChannels,
+    GroupComponent,
   ],
   imports: [
     CommonModule,
@@ -58,11 +77,13 @@ import { NodesChannelsMap } from '../lightning/nodes-channels-map/nodes-channels
     NodesListComponent,
     NodeStatisticsComponent,
     NodeStatisticsChartComponent,
+    NodeFeeChartComponent,
     NodeComponent,
     ChannelsListComponent,
     ChannelComponent,
     LightningWrapperComponent,
     ChannelBoxComponent,
+    ChannelCloseBoxComponent,
     ClosingTypeComponent,
     LightningStatisticsChartComponent,
     NodesNetworksChartComponent,
@@ -73,6 +94,12 @@ import { NodesChannelsMap } from '../lightning/nodes-channels-map/nodes-channels
     NodesPerCountryChartComponent,
     NodesMap,
     NodesChannelsMap,
+    NodesRanking,
+    TopNodesPerChannels,
+    TopNodesPerCapacity,
+    OldestNodes,
+    NodesRankingsDashboard,
+    NodeChannels,
   ],
   providers: [
     LightningApiService,

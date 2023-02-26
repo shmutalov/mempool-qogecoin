@@ -1,4 +1,4 @@
-import express from "express";
+import express from 'express';
 import { Application, Request, Response, NextFunction } from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
@@ -10,7 +10,6 @@ import memPool from './api/mempool';
 import diskCache from './api/disk-cache';
 import statistics from './api/statistics/statistics';
 import websocketHandler from './api/websocket-handler';
-import fiatConversion from './api/fiat-conversion';
 import bisq from './api/bisq/bisq';
 import bisqMarkets from './api/bisq/markets';
 import logger from './logger';
@@ -34,7 +33,12 @@ import miningRoutes from './api/mining/mining-routes';
 import bisqRoutes from './api/bisq/bisq.routes';
 import liquidRoutes from './api/liquid/liquid.routes';
 import bitcoinRoutes from './api/bitcoin/bitcoin.routes';
-import fundingTxFetcher from "./tasks/lightning/sync-tasks/funding-tx-fetcher";
+import fundingTxFetcher from './tasks/lightning/sync-tasks/funding-tx-fetcher';
+import forensicsService from './tasks/lightning/forensics.service';
+import priceUpdater from './tasks/price-updater';
+import mining from './api/mining/mining';
+import chainTips from './api/chain-tips';
+import { AxiosError } from 'axios';
 
 class Server {
   private wss: WebSocket.Server | undefined;
@@ -74,34 +78,14 @@ class Server {
     }
   }
 
-  async startServer(worker = false) {
+  async startServer(worker = false): Promise<void> {
     logger.notice(`Starting Mempool Server${worker ? ' (worker)' : ''}... (${backendInfo.getShortCommitHash()})`);
-
-    this.app
-      .use((req: Request, res: Response, next: NextFunction) => {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        next();
-      })
-      .use(express.urlencoded({ extended: true }))
-      .use(express.text())
-      ;
-
-    this.server = http.createServer(this.app);
-    this.wss = new WebSocket.Server({ server: this.server });
-
-    this.setUpWebsocketHandling();
-
-    await syncAssets.syncAssets$();
-    diskCache.loadMempoolCache();
 
     if (config.DATABASE.ENABLED) {
       await DB.checkDbConnection();
       try {
-        if (process.env.npm_config_reindex !== undefined) { // Re-index requests
-          const tables = process.env.npm_config_reindex.split(',');
-          logger.warn(`Indexed data for "${process.env.npm_config_reindex}" tables will be erased in 5 seconds (using '--reindex')`);
-          await Common.sleep$(5000);
-          await databaseMigration.$truncateIndexedData(tables);
+        if (process.env.npm_config_reindex_blocks === 'true') { // Re-index requests
+          await databaseMigration.$blocksReindexingTruncate();
         }
         await databaseMigration.$initializeOrMigrateDatabase();
         if (Common.indexingEnabled()) {
@@ -110,6 +94,29 @@ class Server {
       } catch (e) {
         throw new Error(e instanceof Error ? e.message : 'Error');
       }
+    }
+
+    this.app
+      .use((req: Request, res: Response, next: NextFunction) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        next();
+      })
+      .use(express.urlencoded({ extended: true }))
+      .use(express.text({ type: ['text/plain', 'application/base64'] }))
+      ;
+
+    if (config.DATABASE.ENABLED) {
+      await priceUpdater.$initializeLatestPriceWithDb();
+    }
+
+    this.server = http.createServer(this.app);
+    this.wss = new WebSocket.Server({ server: this.server });
+
+    this.setUpWebsocketHandling();
+
+    await syncAssets.syncAssets$();
+    if (config.MEMPOOL.ENABLED) {
+      diskCache.loadMempoolCache();
     }
 
     if (config.STATISTICS.ENABLED && config.DATABASE.ENABLED && cluster.isPrimary) {
@@ -124,10 +131,14 @@ class Server {
       }
     }
 
-    fiatConversion.startService();
+    priceUpdater.$run();
+    await chainTips.updateOrphanedBlocks();
 
     this.setUpHttpApiRoutes();
-    this.runMainUpdateLoop();
+
+    if (config.MEMPOOL.ENABLED) {
+      this.runMainUpdateLoop();
+    }
 
     if (config.BISQ.ENABLED) {
       bisq.startBisqService();
@@ -149,7 +160,7 @@ class Server {
     });
   }
 
-  async runMainUpdateLoop() {
+  async runMainUpdateLoop(): Promise<void> {
     try {
       try {
         await memPool.$updateMemPoolInfo();
@@ -168,7 +179,7 @@ class Server {
 
       setTimeout(this.runMainUpdateLoop.bind(this), config.MEMPOOL.POLL_RATE_MS);
       this.currentBackendRetryInterval = 5;
-    } catch (e) {
+    } catch (e: any) {
       const loggerMsg = `runMainLoop error: ${(e instanceof Error ? e.message : e)}. Retrying in ${this.currentBackendRetryInterval} sec.`;
       if (this.currentBackendRetryInterval > 5) {
         logger.warn(loggerMsg);
@@ -176,26 +187,29 @@ class Server {
       } else {
         logger.debug(loggerMsg);
       }
-      logger.debug(JSON.stringify(e));
+      if (e instanceof AxiosError) {
+        logger.debug(`AxiosError: ${e?.message}`);
+      }
       setTimeout(this.runMainUpdateLoop.bind(this), 1000 * this.currentBackendRetryInterval);
       this.currentBackendRetryInterval *= 2;
       this.currentBackendRetryInterval = Math.min(this.currentBackendRetryInterval, 60);
     }
   }
 
-  async $runLightningBackend() {
+  async $runLightningBackend(): Promise<void> {
     try {
       await fundingTxFetcher.$init();
       await networkSyncService.$startService();
+      await forensicsService.$startService();
       await lightningStatsUpdater.$startService();
     } catch(e) {
-      logger.err(`Lightning backend crashed. Restarting in 1 minute. Reason: ${(e instanceof Error ? e.message : e)}`);
+      logger.err(`Nodejs lightning backend crashed. Restarting in 1 minute. Reason: ${(e instanceof Error ? e.message : e)}`);
       await Common.sleep$(1000 * 60);
       this.$runLightningBackend();
     };
 }
 
-  setUpWebsocketHandling() {
+  setUpWebsocketHandling(): void {
     if (this.wss) {
       websocketHandler.setWebsocketServer(this.wss);
     }
@@ -209,19 +223,21 @@ class Server {
       });
     }
     websocketHandler.setupConnectionHandling();
-    statistics.setNewStatisticsEntryCallback(websocketHandler.handleNewStatistic.bind(websocketHandler));
-    blocks.setNewBlockCallback(websocketHandler.handleNewBlock.bind(websocketHandler));
-    memPool.setMempoolChangedCallback(websocketHandler.handleMempoolChange.bind(websocketHandler));
-    fiatConversion.setProgressChangedCallback(websocketHandler.handleNewConversionRates.bind(websocketHandler));
+    if (config.MEMPOOL.ENABLED) {
+      statistics.setNewStatisticsEntryCallback(websocketHandler.handleNewStatistic.bind(websocketHandler));
+      memPool.setAsyncMempoolChangedCallback(websocketHandler.handleMempoolChange.bind(websocketHandler));
+      blocks.setNewAsyncBlockCallback(websocketHandler.handleNewBlock.bind(websocketHandler));
+    }
+    priceUpdater.setRatesChangedCallback(websocketHandler.handleNewConversionRates.bind(websocketHandler));
     loadingIndicators.setProgressChangedCallback(websocketHandler.handleLoadingChanged.bind(websocketHandler));
   }
-
-  setUpHttpApiRoutes() {
+  
+  setUpHttpApiRoutes(): void {
     bitcoinRoutes.initRoutes(this.app);
-    if (config.STATISTICS.ENABLED && config.DATABASE.ENABLED) {
+    if (config.STATISTICS.ENABLED && config.DATABASE.ENABLED && config.MEMPOOL.ENABLED) {
       statisticsRoutes.initRoutes(this.app);
     }
-    if (Common.indexingEnabled()) {
+    if (Common.indexingEnabled() && config.MEMPOOL.ENABLED) {
       miningRoutes.initRoutes(this.app);
     }
     if (config.BISQ.ENABLED) {
@@ -238,4 +254,4 @@ class Server {
   }
 }
 
-const server = new Server();
+((): Server => new Server())();

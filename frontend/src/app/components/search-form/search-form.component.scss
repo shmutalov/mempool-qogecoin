@@ -43,10 +43,13 @@ form {
   @media (min-width: 1200px) {
     min-width: 300px;
   }
-  input {
-    border: 0px;
-  }
   .btn {
     width: 100px;
   }
+}
+
+.spinner-border {
+  vertical-align: text-top;
+  margin-top: 1px;
+  margin-right: 2px;
 }

@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { Observable } from 'rxjs';
-import { map, share } from 'rxjs/operators';
-import { SeoService } from 'src/app/services/seo.service';
+import { share } from 'rxjs/operators';
+import { INodesRanking } from '../../interfaces/node-api.interface';
+import { SeoService } from '../../services/seo.service';
+import { StateService } from '../../services/state.service';
 import { LightningApiService } from '../lightning-api.service';
 
 @Component({
@@ -11,30 +13,20 @@ import { LightningApiService } from '../lightning-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LightningDashboardComponent implements OnInit {
-  nodesByCapacity$: Observable<any>;
-  nodesByChannels$: Observable<any>;
   statistics$: Observable<any>;
+  nodesRanking$: Observable<INodesRanking>;
+  officialMempoolSpace = this.stateService.env.OFFICIAL_MEMPOOL_SPACE;
 
   constructor(
     private lightningApiService: LightningApiService,
     private seoService: SeoService,
+    private stateService: StateService,
   ) { }
 
   ngOnInit(): void {
-    this.seoService.setTitle($localize`Lightning Dashboard`);
+    this.seoService.setTitle($localize`:@@142e923d3b04186ac6ba23387265d22a2fa404e0:Lightning Explorer`);
 
-    const sharedObservable = this.lightningApiService.listTopNodes$().pipe(share());
-
-    this.nodesByCapacity$ = sharedObservable
-      .pipe(
-        map((object) => object.topByCapacity),
-      );
-
-    this.nodesByChannels$ = sharedObservable
-      .pipe(
-        map((object) => object.topByChannels),
-      );
-
+    this.nodesRanking$ = this.lightningApiService.getNodesRanking$().pipe(share());
     this.statistics$ = this.lightningApiService.getLatestStatistics$().pipe(share());
   }
 

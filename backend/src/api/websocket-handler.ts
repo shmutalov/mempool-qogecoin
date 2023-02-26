@@ -8,7 +8,6 @@ import blocks from './blocks';
 import memPool from './mempool';
 import backendInfo from './backend-info';
 import mempoolBlocks from './mempool-blocks';
-import fiatConversion from './fiat-conversion';
 import { Common } from './common';
 import loadingIndicators from './loading-indicators';
 import config from '../config';
@@ -18,6 +17,9 @@ import difficultyAdjustment from './difficulty-adjustment';
 import feeApi from './fee-api';
 import BlocksAuditsRepository from '../repositories/BlocksAuditsRepository';
 import BlocksSummariesRepository from '../repositories/BlocksSummariesRepository';
+import Audit from './audit';
+import { deepClone } from '../utils/clone';
+import priceUpdater from '../tasks/price-updater';
 
 class WebsocketHandler {
   private wss: WebSocket.Server | undefined;
@@ -57,10 +59,10 @@ class WebsocketHandler {
               client['track-tx'] = parsedMessage['track-tx'];
               // Client is telling the transaction wasn't found
               if (parsedMessage['watch-mempool']) {
-                const rbfCacheTx = rbfCache.get(client['track-tx']);
-                if (rbfCacheTx) {
+                const rbfCacheTxid = rbfCache.getReplacedBy(client['track-tx']);
+                if (rbfCacheTxid) {
                   response['txReplaced'] = {
-                    txid: rbfCacheTx.txid,
+                    txid: rbfCacheTxid,
                   };
                   client['track-tx'] = null;
                 } else {
@@ -212,7 +214,7 @@ class WebsocketHandler {
       'mempoolInfo': memPool.getMempoolInfo(),
       'vBytesPerSecond': memPool.getVBytesPerSecond(),
       'blocks': _blocks,
-      'conversions': fiatConversion.getConversionRates(),
+      'conversions': priceUpdater.latestPrices,
       'mempool-blocks': mempoolBlocks.getMempoolBlocks(),
       'transactions': memPool.getLatestTransactions(),
       'backendInfo': backendInfo.getBackendInfo(),
@@ -243,13 +245,18 @@ class WebsocketHandler {
     });
   }
 
-  handleMempoolChange(newMempool: { [txid: string]: TransactionExtended },
-    newTransactions: TransactionExtended[], deletedTransactions: TransactionExtended[]) {
+  async handleMempoolChange(newMempool: { [txid: string]: TransactionExtended },
+    newTransactions: TransactionExtended[], deletedTransactions: TransactionExtended[]): Promise<void> {
     if (!this.wss) {
       throw new Error('WebSocket.Server is not set');
     }
 
-    mempoolBlocks.updateMempoolBlocks(newMempool);
+    if (config.MEMPOOL.ADVANCED_GBT_MEMPOOL) {
+      await mempoolBlocks.updateBlockTemplates(newMempool, newTransactions, deletedTransactions.map(tx => tx.txid), true);
+    } else {
+      mempoolBlocks.updateMempoolBlocks(newMempool, true);
+    }
+
     const mBlocks = mempoolBlocks.getMempoolBlocks();
     const mBlockDeltas = mempoolBlocks.getMempoolBlockDeltas();
     const mempoolInfo = memPool.getMempoolInfo();
@@ -404,54 +411,39 @@ class WebsocketHandler {
       }
     });
   }
-
-  handleNewBlock(block: BlockExtended, txIds: string[], transactions: TransactionExtended[]) {
+ 
+  async handleNewBlock(block: BlockExtended, txIds: string[], transactions: TransactionExtended[]): Promise<void> {
     if (!this.wss) {
       throw new Error('WebSocket.Server is not set');
     }
 
-    let mBlocks: undefined | MempoolBlock[];
-    let mBlockDeltas: undefined | MempoolBlockDelta[];
-    let matchRate = 0;
     const _memPool = memPool.getMempool();
-    const _mempoolBlocks = mempoolBlocks.getMempoolBlocksWithTransactions();
 
-    if (_mempoolBlocks[0]) {
-      const matches: string[] = [];
-      const added: string[] = [];
-      const missing: string[] = [];
-
-      for (const txId of txIds) {
-        if (_mempoolBlocks[0].transactionIds.indexOf(txId) > -1) {
-          matches.push(txId);
-        } else {
-          added.push(txId);
-        }
-        delete _memPool[txId];
+    if (config.MEMPOOL.AUDIT) {
+      let projectedBlocks;
+      // template calculation functions have mempool side effects, so calculate audits using
+      // a cloned copy of the mempool if we're running a different algorithm for mempool updates
+      const auditMempool = (config.MEMPOOL.ADVANCED_GBT_AUDIT === config.MEMPOOL.ADVANCED_GBT_MEMPOOL) ? _memPool : deepClone(_memPool);
+      if (config.MEMPOOL.ADVANCED_GBT_AUDIT) {
+        projectedBlocks = await mempoolBlocks.makeBlockTemplates(auditMempool, false);
+      } else {
+        projectedBlocks = mempoolBlocks.updateMempoolBlocks(auditMempool, false);
       }
 
-      for (const txId of _mempoolBlocks[0].transactionIds) {
-        if (matches.includes(txId) || added.includes(txId)) {
-          continue;
-        }
-        missing.push(txId);
-      }
+      if (Common.indexingEnabled() && memPool.isInSync()) {
+        const { censored, added, fresh, score } = Audit.auditBlock(transactions, projectedBlocks, auditMempool);
+        const matchRate = Math.round(score * 100 * 100) / 100;
 
-      matchRate = Math.round((Math.max(0, matches.length - missing.length - added.length) / txIds.length * 100) * 100) / 100;
-      mempoolBlocks.updateMempoolBlocks(_memPool);
-      mBlocks = mempoolBlocks.getMempoolBlocks();
-      mBlockDeltas = mempoolBlocks.getMempoolBlockDeltas();
-
-      if (Common.indexingEnabled()) {
-        const stripped = _mempoolBlocks[0].transactions.map((tx) => {
+        const stripped = projectedBlocks[0]?.transactions ? projectedBlocks[0].transactions.map((tx) => {
           return {
             txid: tx.txid,
             vsize: tx.vsize,
             fee: tx.fee ? Math.round(tx.fee) : 0,
             value: tx.value,
           };
-        });  
-        BlocksSummariesRepository.$saveSummary({
+        }) : [];
+
+        BlocksSummariesRepository.$saveTemplate({
           height: block.height,
           template: {
             id: block.id,
@@ -464,15 +456,32 @@ class WebsocketHandler {
           height: block.height,
           hash: block.id,
           addedTxs: added,
-          missingTxs: missing,
+          missingTxs: censored,
+          freshTxs: fresh,
           matchRate: matchRate,
         });
+
+        if (block.extras) {
+          block.extras.matchRate = matchRate;
+        }
       }
     }
 
-    if (block.extras) {
-      block.extras.matchRate = matchRate;
+    const removed: string[] = [];
+    // Update mempool to remove transactions included in the new block
+    for (const txId of txIds) {
+      delete _memPool[txId];
+      removed.push(txId);
+      rbfCache.evict(txId);
     }
+
+    if (config.MEMPOOL.ADVANCED_GBT_MEMPOOL) {
+      await mempoolBlocks.updateBlockTemplates(_memPool, [], removed, true);
+    } else {
+      mempoolBlocks.updateMempoolBlocks(_memPool, true);
+    }
+    const mBlocks = mempoolBlocks.getMempoolBlocks();
+    const mBlockDeltas = mempoolBlocks.getMempoolBlockDeltas();
 
     const da = difficultyAdjustment.getDifficultyAdjustment();
     const fees = feeApi.getRecommendedFee();

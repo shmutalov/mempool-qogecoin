@@ -22,7 +22,11 @@
 .mined-block {
   position: absolute;
   top: 0px;
-  transition: 2s;
+  transition: background 2s, left 2s, transform 1s;
+}
+
+.mined-block.placeholder-block {
+  background: none !important;
 }
 
 .block-size {
@@ -96,6 +100,16 @@
   transform-origin: top;
 }
 
+.bitcoin-block.placeholder-block::after {
+  content: none;
+  background: 0;
+}
+
+.bitcoin-block.placeholder-block::before {
+  content: none;
+  background: 0;
+}
+
 .black-background {
   background-color: #11131f;
   z-index: 100;
@@ -123,6 +137,10 @@
   opacity: 1;
 }
 
+.loading .bitcoin-block.mined-block {
+  background: #2d3348;
+}
+
 @keyframes opacityPulse {
   0% {opacity: 0.7;}
   50% {opacity: 1.0;}
@@ -144,4 +162,10 @@
 .hide {
   opacity: 0;
   pointer-events : none;
+}
+
+.time-ltr {
+  .bitcoin-block {
+    transform: scaleX(-1);
+  }
 }

@@ -100,6 +100,7 @@ class Mining {
         rank: rank++,
         emptyBlocks: emptyBlocksCount.length > 0 ? emptyBlocksCount[0]['count'] : 0,
         slug: poolInfo.slug,
+        avgMatchRate: poolInfo.avgMatchRate !== null ? Math.round(100 * poolInfo.avgMatchRate) / 100 : null,
       };
       poolsStats.push(poolStat);
     });
@@ -171,7 +172,7 @@ class Mining {
   }
 
   /**
-   * [INDEXING] Generate weekly mining pool hashrate history
+   * Generate weekly mining pool hashrate history
    */
   public async $generatePoolHashrateHistory(): Promise<void> {
     const now = new Date();
@@ -265,9 +266,9 @@ class Mining {
       }
       await HashratesRepository.$setLatestRun('last_weekly_hashrates_indexing', new Date().getUTCDate());
       if (newlyIndexed > 0) {
-        logger.notice(`Weekly mining pools hashrates indexing completed: indexed ${newlyIndexed}`);
+        logger.notice(`Weekly mining pools hashrates indexing completed: indexed ${newlyIndexed}`, logger.tags.mining);
       } else {
-        logger.debug(`Weekly mining pools hashrates indexing completed: indexed ${newlyIndexed}`);
+        logger.debug(`Weekly mining pools hashrates indexing completed: indexed ${newlyIndexed}`, logger.tags.mining);
       }
       loadingIndicators.setProgress('weekly-hashrate-indexing', 100);
     } catch (e) {
@@ -278,7 +279,7 @@ class Mining {
   }
 
   /**
-   * [INDEXING] Generate daily hashrate data
+   * Generate daily hashrate data
    */
   public async $generateNetworkHashrateHistory(): Promise<void> {
     // We only run this once a day around midnight
@@ -370,14 +371,14 @@ class Mining {
 
       await HashratesRepository.$setLatestRun('last_hashrates_indexing', new Date().getUTCDate());
       if (newlyIndexed > 0) {
-        logger.notice(`Daily network hashrate indexing completed: indexed ${newlyIndexed} days`);
+        logger.notice(`Daily network hashrate indexing completed: indexed ${newlyIndexed} days`, logger.tags.mining);
       } else {
-        logger.debug(`Daily network hashrate indexing completed: indexed ${newlyIndexed} days`);
+        logger.debug(`Daily network hashrate indexing completed: indexed ${newlyIndexed} days`, logger.tags.mining);
       }
       loadingIndicators.setProgress('daily-hashrate-indexing', 100);
     } catch (e) {
       loadingIndicators.setProgress('daily-hashrate-indexing', 100);
-      logger.err(`Daily network hashrate indexing failed. Trying again in 10 seconds. Reason: ${(e instanceof Error ? e.message : e)}`);
+      logger.err(`Daily network hashrate indexing failed. Trying again in 10 seconds. Reason: ${(e instanceof Error ? e.message : e)}`, logger.tags.mining);
       throw e;
     }
   }
@@ -449,16 +450,16 @@ class Mining {
     }
 
     if (totalIndexed > 0) {
-      logger.notice(`Indexed ${totalIndexed} difficulty adjustments`);
+      logger.notice(`Indexed ${totalIndexed} difficulty adjustments`, logger.tags.mining);
     } else {
-      logger.debug(`Indexed ${totalIndexed} difficulty adjustments`);
+      logger.debug(`Indexed ${totalIndexed} difficulty adjustments`, logger.tags.mining);
     }
   }
 
   /**
    * Create a link between blocks and the latest price at when they were mined
    */
-  public async $indexBlockPrices() {
+  public async $indexBlockPrices(): Promise<void> {
     if (this.blocksPriceIndexingRunning === true) {
       return;
     }
@@ -517,6 +518,41 @@ class Mining {
     }
 
     this.blocksPriceIndexingRunning = false;
+  }
+
+  /**
+   * Index core coinstatsindex
+   */
+  public async $indexCoinStatsIndex(): Promise<void> {
+    let timer = new Date().getTime() / 1000;
+    let totalIndexed = 0;
+
+    const blockchainInfo = await bitcoinClient.getBlockchainInfo();
+    let currentBlockHeight = blockchainInfo.blocks;
+
+    while (currentBlockHeight > 0) {
+      const indexedBlocks = await BlocksRepository.$getBlocksMissingCoinStatsIndex(
+        currentBlockHeight, currentBlockHeight - 10000);
+        
+      for (const block of indexedBlocks) {
+        const txoutset = await bitcoinClient.getTxoutSetinfo('none', block.height);
+        await BlocksRepository.$updateCoinStatsIndexData(block.hash, txoutset.txouts,
+          Math.round(txoutset.block_info.prevout_spent * 100000000));        
+        ++totalIndexed;
+
+        const elapsedSeconds = Math.max(1, new Date().getTime() / 1000 - timer);
+        if (elapsedSeconds > 5) {
+          logger.info(`Indexing coinstatsindex data for block #${block.height}. Indexed ${totalIndexed} blocks.`, logger.tags.mining);
+          timer = new Date().getTime() / 1000;
+        }
+      }
+
+      currentBlockHeight -= 10000;
+    }
+
+    if (totalIndexed) {
+      logger.info(`Indexing missing coinstatsindex data completed`, logger.tags.mining);
+    }
   }
 
   private getDateMidnight(date: Date): Date {

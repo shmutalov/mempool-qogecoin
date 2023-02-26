@@ -1,11 +1,22 @@
 import TxSprite from './tx-sprite';
 import { FastVertexArray } from './fast-vertex-array';
-import { TransactionStripped } from 'src/app/interfaces/websocket.interface';
+import { TransactionStripped } from '../../interfaces/websocket.interface';
 import { SpriteUpdateParams, Square, Color, ViewUpdateParams } from './sprite-types';
-import { feeLevels, mempoolFeeColors } from 'src/app/app.constants';
+import { feeLevels, mempoolFeeColors } from '../../app.constants';
+import BlockScene from './block-scene';
 
 const hoverTransitionTime = 300;
 const defaultHoverColor = hexToColor('1bd8f4');
+
+const feeColors = mempoolFeeColors.map(hexToColor);
+const auditFeeColors = feeColors.map((color) => darken(desaturate(color, 0.3), 0.9));
+const marginalFeeColors = feeColors.map((color) => darken(desaturate(color, 0.8), 1.1));
+const auditColors = {
+  censored: hexToColor('f344df'),
+  missing: darken(desaturate(hexToColor('f344df'), 0.3), 0.7),
+  added: hexToColor('0099ff'),
+  selected: darken(desaturate(hexToColor('0099ff'), 0.3), 0.7),
+};
 
 // convert from this class's update format to TxSprite's update format
 function toSpriteUpdate(params: ViewUpdateParams): SpriteUpdateParams {
@@ -25,7 +36,9 @@ export default class TxView implements TransactionStripped {
   vsize: number;
   value: number;
   feerate: number;
-  status?: 'found' | 'missing' | 'added';
+  status?: 'found' | 'missing' | 'fresh' | 'added' | 'censored' | 'selected';
+  context?: 'projected' | 'actual';
+  scene?: BlockScene;
 
   initialised: boolean;
   vertexArray: FastVertexArray;
@@ -38,7 +51,9 @@ export default class TxView implements TransactionStripped {
 
   dirty: boolean;
 
-  constructor(tx: TransactionStripped, vertexArray: FastVertexArray) {
+  constructor(tx: TransactionStripped, scene: BlockScene) {
+    this.scene = scene;
+    this.context = tx.context;
     this.txid = tx.txid;
     this.fee = tx.fee;
     this.vsize = tx.vsize;
@@ -46,7 +61,7 @@ export default class TxView implements TransactionStripped {
     this.feerate = tx.fee / tx.vsize;
     this.status = tx.status;
     this.initialised = false;
-    this.vertexArray = vertexArray;
+    this.vertexArray = scene.vertexArray;
 
     this.hover = false;
 
@@ -142,16 +157,33 @@ export default class TxView implements TransactionStripped {
   }
 
   getColor(): Color {
-    // Block audit
-    if (this.status === 'missing') {
-      return hexToColor('039BE5');
-    } else if (this.status === 'added') {
-      return hexToColor('D81B60');
-    }
-
-    // Block component
     const feeLevelIndex = feeLevels.findIndex((feeLvl) => Math.max(1, this.feerate) < feeLvl) - 1;
-    return hexToColor(mempoolFeeColors[feeLevelIndex] || mempoolFeeColors[mempoolFeeColors.length - 1]);
+    const feeLevelColor = feeColors[feeLevelIndex] || feeColors[mempoolFeeColors.length - 1];
+    // Normal mode
+    if (!this.scene?.highlightingEnabled) {
+      return feeLevelColor;
+    }
+    // Block audit
+    switch(this.status) {
+      case 'censored':
+        return auditColors.censored;
+      case 'missing':
+        return marginalFeeColors[feeLevelIndex] || marginalFeeColors[mempoolFeeColors.length - 1];
+      case 'fresh':
+        return auditColors.missing;
+      case 'added':
+        return auditColors.added;
+      case 'selected':
+        return marginalFeeColors[feeLevelIndex] || marginalFeeColors[mempoolFeeColors.length - 1];
+      case 'found':
+        if (this.context === 'projected') {
+          return auditFeeColors[feeLevelIndex] || auditFeeColors[mempoolFeeColors.length - 1];
+        } else {
+          return feeLevelColor;
+        }
+      default:
+        return feeLevelColor;
+    }
   }
 }
 
@@ -162,4 +194,23 @@ function hexToColor(hex: string): Color {
     b: parseInt(hex.slice(4, 6), 16) / 255,
     a: 1
   };
+}
+
+function desaturate(color: Color, amount: number): Color {
+  const gray = (color.r + color.g + color.b) / 6;
+  return {
+    r: color.r + ((gray - color.r) * amount),
+    g: color.g + ((gray - color.g) * amount),
+    b: color.b + ((gray - color.b) * amount),
+    a: color.a,
+  };
+}
+
+function darken(color: Color, amount: number): Color {
+  return {
+    r: color.r * amount,
+    g: color.g * amount,
+    b: color.b * amount,
+    a: color.a,
+  }
 }

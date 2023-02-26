@@ -1,15 +1,11 @@
 import { NgModule } from '@angular/core';
-import { Routes, RouterModule, PreloadAllModules } from '@angular/router';
+import { Routes, RouterModule } from '@angular/router';
+import { AppPreloadingStrategy } from './app.preloading-strategy'
 import { StartComponent } from './components/start/start.component';
 import { TransactionComponent } from './components/transaction/transaction.component';
-import { TransactionPreviewComponent } from './components/transaction/transaction-preview.component';
 import { BlockComponent } from './components/block/block.component';
-import { BlockAuditComponent } from './components/block-audit/block-audit.component';
-import { BlockPreviewComponent } from './components/block/block-preview.component';
 import { AddressComponent } from './components/address/address.component';
-import { AddressPreviewComponent } from './components/address/address-preview.component';
 import { MasterPageComponent } from './components/master-page/master-page.component';
-import { MasterPagePreviewComponent } from './components/master-page-preview/master-page-preview.component';
 import { AboutComponent } from './components/about/about.component';
 import { StatusViewComponent } from './components/status-view/status-view.component';
 import { TermsOfServiceComponent } from './components/terms-of-service/terms-of-service.component';
@@ -25,6 +21,10 @@ import { AssetsComponent } from './components/assets/assets.component';
 import { AssetComponent } from './components/asset/asset.component';
 import { AssetsNavComponent } from './components/assets/assets-nav/assets-nav.component';
 
+const browserWindow = window || {};
+// @ts-ignore
+const browserWindowEnv = browserWindow.__env || {};
+
 let routes: Routes = [
   {
     path: 'testnet',
@@ -32,7 +32,8 @@ let routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
-        loadChildren: () => import('./graphs/graphs.module').then(m => m.GraphsModule)
+        loadChildren: () => import('./graphs/graphs.module').then(m => m.GraphsModule),
+        data: { preload: true },
       },
       {
         path: '',
@@ -72,12 +73,14 @@ let routes: Routes = [
             children: [],
             component: AddressComponent,
             data: {
-              ogImage: true
+              ogImage: true,
+              networkSpecific: true,
             }
           },
           {
             path: 'tx',
             component: StartComponent,
+            data: { networkSpecific: true },
             children: [
               {
                 path: ':id',
@@ -88,6 +91,7 @@ let routes: Routes = [
           {
             path: 'block',
             component: StartComponent,
+            data: { networkSpecific: true },
               children: [
               {
                 path: ':id',
@@ -99,17 +103,9 @@ let routes: Routes = [
             ],
           },
           {
-            path: 'block-audit',
-            children: [
-              {
-                path: ':id',
-                component: BlockAuditComponent,
-              },
-            ],
-          },
-          {
             path: 'docs',
-            loadChildren: () => import('./docs/docs.module').then(m => m.DocsModule)
+            loadChildren: () => import('./docs/docs.module').then(m => m.DocsModule),
+            data: { preload: true },
           },
           {
             path: 'api',
@@ -117,12 +113,14 @@ let routes: Routes = [
           },
           {
             path: 'lightning',
-            loadChildren: () => import('./lightning/lightning.module').then(m => m.LightningModule)
+            loadChildren: () => import('./lightning/lightning.module').then(m => m.LightningModule),
+            data: { preload: browserWindowEnv && browserWindowEnv.LIGHTNING === true, networks: ['bitcoin'] },
           },
         ],
       },
       {
         path: 'status',
+        data: { networks: ['bitcoin', 'liquid'] },
         component: StatusViewComponent
       },
       {
@@ -181,11 +179,13 @@ let routes: Routes = [
             children: [],
             component: AddressComponent,
             data: {
-              ogImage: true
+              ogImage: true,
+              networkSpecific: true,
             }
           },
           {
             path: 'tx',
+            data: { networkSpecific: true },
             component: StartComponent,
             children: [
               {
@@ -196,6 +196,7 @@ let routes: Routes = [
           },
           {
             path: 'block',
+            data: { networkSpecific: true },
             component: StartComponent,
             children: [
               {
@@ -204,15 +205,6 @@ let routes: Routes = [
                 data: {
                   ogImage: true
                 }
-              },
-            ],
-          },
-          {
-            path: 'block-audit',
-            children: [
-              {
-                path: ':id',
-                component: BlockAuditComponent,
               },
             ],
           },
@@ -226,12 +218,14 @@ let routes: Routes = [
           },
           {
             path: 'lightning',
+            data: { networks: ['bitcoin'] },
             loadChildren: () => import('./lightning/lightning.module').then(m => m.LightningModule)
           },
         ],
       },
       {
         path: 'status',
+        data: { networks: ['bitcoin', 'liquid'] },
         component: StatusViewComponent
       },
       {
@@ -287,11 +281,13 @@ let routes: Routes = [
         children: [],
         component: AddressComponent,
         data: {
-          ogImage: true
+          ogImage: true,
+          networkSpecific: true,
         }
       },
       {
         path: 'tx',
+        data: { networkSpecific: true },
         component: StartComponent,
         children: [
           {
@@ -302,6 +298,7 @@ let routes: Routes = [
       },
       {
         path: 'block',
+        data: { networkSpecific: true },
         component: StartComponent,
         children: [
           {
@@ -310,15 +307,6 @@ let routes: Routes = [
             data: {
               ogImage: true
             }
-          },
-        ],
-      },
-      {
-        path: 'block-audit',
-        children: [
-          {
-            path: ':id',
-            component: BlockAuditComponent
           },
         ],
       },
@@ -332,72 +320,31 @@ let routes: Routes = [
       },
       {
         path: 'lightning',
+        data: { networks: ['bitcoin'] },
         loadChildren: () => import('./lightning/lightning.module').then(m => m.LightningModule)
       },
     ],
   },
   {
     path: 'preview',
-    component: MasterPagePreviewComponent,
     children: [
       {
-        path: 'block/:id',
-        component: BlockPreviewComponent
+        path: '',
+        loadChildren: () => import('./previews.module').then(m => m.PreviewsModule)
       },
       {
-        path: 'testnet/block/:id',
-        component: BlockPreviewComponent
+        path: 'testnet',
+        loadChildren: () => import('./previews.module').then(m => m.PreviewsModule)
       },
       {
-        path: 'signet/block/:id',
-        component: BlockPreviewComponent
-      },
-      {
-        path: 'address/:id',
-        children: [],
-        component: AddressPreviewComponent
-      },
-      {
-        path: 'testnet/address/:id',
-        children: [],
-        component: AddressPreviewComponent
-      },
-      {
-        path: 'signet/address/:id',
-        children: [],
-        component: AddressPreviewComponent
-      },
-      {
-        path: 'tx/:id',
-        children: [],
-        component: TransactionPreviewComponent
-      },
-      {
-        path: 'testnet/tx/:id',
-        children: [],
-        component: TransactionPreviewComponent
-      },
-      {
-        path: 'signet/tx/:id',
-        children: [],
-        component: TransactionPreviewComponent
-      },
-      {
-        path: 'lightning',
-        loadChildren: () => import('./lightning/lightning-previews.module').then(m => m.LightningPreviewsModule)
-      },
-      {
-        path: 'testnet/lightning',
-        loadChildren: () => import('./lightning/lightning-previews.module').then(m => m.LightningPreviewsModule)
-      },
-      {
-        path: 'signet/lightning',
-        loadChildren: () => import('./lightning/lightning-previews.module').then(m => m.LightningPreviewsModule)
+        path: 'signet',
+        loadChildren: () => import('./previews.module').then(m => m.PreviewsModule)
       },
     ],
   },
   {
     path: 'status',
+    data: { networks: ['bitcoin', 'liquid'] },
     component: StatusViewComponent
   },
   {
@@ -409,10 +356,6 @@ let routes: Routes = [
     redirectTo: ''
   },
 ];
-
-const browserWindow = window || {};
-// @ts-ignore
-const browserWindowEnv = browserWindow.__env || {};
 
 if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'bisq') {
   routes = [{
@@ -465,11 +408,13 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
               children: [],
               component: AddressComponent,
               data: {
-                ogImage: true
+                ogImage: true,
+                networkSpecific: true,
               }
             },
             {
               path: 'tx',
+              data: { networkSpecific: true },
               component: StartComponent,
               children: [
                 {
@@ -480,6 +425,7 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
             },
             {
               path: 'block',
+              data: { networkSpecific: true },
               component: StartComponent,
               children: [
                 {
@@ -493,18 +439,22 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
             },
             {
               path: 'assets',
+              data: { networks: ['liquid'] },
               component: AssetsNavComponent,
               children: [
                 {
                   path: 'all',
+                  data: { networks: ['liquid'] },
                   component: AssetsComponent,
                 },
                 {
                   path: 'asset/:id',
+                  data: { networkSpecific: true },
                   component: AssetComponent
                 },
                 {
                   path: 'group/:id',
+                  data: { networkSpecific: true },
                   component: AssetGroupComponent
                 },
                 {
@@ -525,6 +475,7 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
         },
         {
           path: 'status',
+          data: { networks: ['bitcoin', 'liquid'] },
           component: StatusViewComponent
         },
         {
@@ -575,11 +526,13 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
           children: [],
           component: AddressComponent,
           data: {
-            ogImage: true
+            ogImage: true,
+            networkSpecific: true,
           }
         },
         {
           path: 'tx',
+          data: { networkSpecific: true },
           component: StartComponent,
           children: [
             {
@@ -590,6 +543,7 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
         },
         {
           path: 'block',
+          data: { networkSpecific: true },
           component: StartComponent,
           children: [
             {
@@ -603,22 +557,27 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
         },
         {
           path: 'assets',
+          data: { networks: ['liquid'] },
           component: AssetsNavComponent,
           children: [
             {
               path: 'featured',
+              data: { networkSpecific: true },
               component: AssetsFeaturedComponent,
             },
             {
               path: 'all',
+              data: { networks: ['liquid'] },
               component: AssetsComponent,
             },
             {
               path: 'asset/:id',
+              data: { networkSpecific: true },
               component: AssetComponent
             },
             {
               path: 'group/:id',
+              data: { networkSpecific: true },
               component: AssetGroupComponent
             },
             {
@@ -639,40 +598,20 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
     },
     {
       path: 'preview',
-      component: MasterPagePreviewComponent,
       children: [
         {
-          path: 'block/:id',
-          component: BlockPreviewComponent
+          path: '',
+          loadChildren: () => import('./previews.module').then(m => m.PreviewsModule)
         },
         {
-          path: 'testnet/block/:id',
-          component: BlockPreviewComponent
-        },
-        {
-          path: 'address/:id',
-          children: [],
-          component: AddressPreviewComponent
-        },
-        {
-          path: 'testnet/address/:id',
-          children: [],
-          component: AddressPreviewComponent
-        },
-        {
-          path: 'tx/:id',
-          children: [],
-          component: TransactionPreviewComponent
-        },
-        {
-          path: 'testnet/tx/:id',
-          children: [],
-          component: TransactionPreviewComponent
+          path: 'testnet',
+          loadChildren: () => import('./previews.module').then(m => m.PreviewsModule)
         },
       ],
     },
     {
       path: 'status',
+      data: { networks: ['bitcoin', 'liquid']},
       component: StatusViewComponent
     },
     {
@@ -688,10 +627,10 @@ if (browserWindowEnv && browserWindowEnv.BASE_MODULE === 'liquid') {
 
 @NgModule({
   imports: [RouterModule.forRoot(routes, {
-    initialNavigation: 'enabled',
+    initialNavigation: 'enabledBlocking',
     scrollPositionRestoration: 'enabled',
     anchorScrolling: 'enabled',
-    preloadingStrategy: PreloadAllModules
+    preloadingStrategy: AppPreloadingStrategy
   })],
 })
 export class AppRoutingModule { }

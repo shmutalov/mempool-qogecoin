@@ -1,18 +1,17 @@
 import { ChangeDetectionStrategy, Component, Input, NgZone, OnInit, HostBinding } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EChartsOption, PieSeriesOption } from 'echarts';
 import { concat, Observable } from 'rxjs';
 import { map, share, startWith, switchMap, tap } from 'rxjs/operators';
-import { SinglePoolStats } from 'src/app/interfaces/node-api.interface';
-import { SeoService } from 'src/app/services/seo.service';
+import { SeoService } from '../../services/seo.service';
 import { StorageService } from '../..//services/storage.service';
 import { MiningService, MiningStats } from '../../services/mining.service';
 import { StateService } from '../../services/state.service';
-import { chartColors, poolsColor } from 'src/app/app.constants';
-import { RelativeUrlPipe } from 'src/app/shared/pipes/relative-url/relative-url.pipe';
-import { download } from 'src/app/shared/graphs.utils';
-import { isMobile } from 'src/app/shared/common.utils';
+import { chartColors, poolsColor } from '../../app.constants';
+import { RelativeUrlPipe } from '../../shared/pipes/relative-url/relative-url.pipe';
+import { download } from '../../shared/graphs.utils';
+import { isMobile } from '../../shared/common.utils';
 
 @Component({
   selector: 'app-pool-ranking',
@@ -24,8 +23,10 @@ export class PoolRankingComponent implements OnInit {
   @Input() widget = false;
 
   miningWindowPreference: string;
-  radioGroupForm: FormGroup;
+  radioGroupForm: UntypedFormGroup;
 
+  auditAvailable = false;
+  indexingAvailable = false;
   isLoading = true;
   chartOptions: EChartsOption = {};
   chartInitOptions = {
@@ -41,7 +42,7 @@ export class PoolRankingComponent implements OnInit {
   constructor(
     private stateService: StateService,
     private storageService: StorageService,
-    private formBuilder: FormBuilder,
+    private formBuilder: UntypedFormBuilder,
     private miningService: MiningService,
     private seoService: SeoService,
     private router: Router,
@@ -60,6 +61,10 @@ export class PoolRankingComponent implements OnInit {
     this.radioGroupForm = this.formBuilder.group({ dateSpan: this.miningWindowPreference });
     this.radioGroupForm.controls.dateSpan.setValue(this.miningWindowPreference);
 
+    this.indexingAvailable = (this.stateService.env.BASE_MODULE === 'mempool' &&
+      this.stateService.env.MINING_DASHBOARD === true);
+    this.auditAvailable = this.indexingAvailable && this.stateService.env.AUDIT;
+
     this.route
       .fragment
       .subscribe((fragment) => {
@@ -73,6 +78,7 @@ export class PoolRankingComponent implements OnInit {
         .pipe(
           startWith(this.radioGroupForm.controls.dateSpan.value), // (trigger when the page loads)
           tap((value) => {
+            this.isLoading = true;
             this.timespan = value;
             if (!this.widget) {
               this.storageService.setValue('miningWindowPreference', value);
@@ -92,7 +98,6 @@ export class PoolRankingComponent implements OnInit {
       )
       .pipe(
         map(data => {
-          data.pools = data.pools.map((pool: SinglePoolStats) => this.formatPoolUI(pool));
           data['minersLuck'] = (100 * (data.blockCount / 1008)).toFixed(2); // luck 1w
           return data;
         }),
@@ -102,11 +107,6 @@ export class PoolRankingComponent implements OnInit {
         }),
         share()
       );
-  }
-
-  formatPoolUI(pool: SinglePoolStats) {
-    pool['blockText'] = pool.blockCount.toString() + ` (${pool.share}%)`;
-    return pool;
   }
 
   generatePoolsChartSerieData(miningStats) {
@@ -176,7 +176,7 @@ export class PoolRankingComponent implements OnInit {
     // 'Other'
     data.push({
       itemStyle: {
-        color: 'grey',
+        color: '#6b6b6b',
       },
       value: totalShareOther,
       name: 'Other' + (isMobile() ? `` : ` (${totalShareOther.toFixed(2)}%)`),
@@ -219,7 +219,7 @@ export class PoolRankingComponent implements OnInit {
 
     this.chartOptions = {
       animation: false,
-      color: chartColors,
+      color: chartColors.filter(color => color !== '#FDD835'),
       tooltip: {
         trigger: 'item',
         textStyle: {

@@ -13,6 +13,7 @@ describe('Mempool Backend Config', () => {
       const config = jest.requireActual('../config').default;
 
       expect(config.MEMPOOL).toStrictEqual({
+        ENABLED: true,
         NETWORK: 'mainnet',
         BACKEND: 'none',
         BLOCKS_SUMMARIES_INDEXING: false,
@@ -28,7 +29,6 @@ describe('Mempool Backend Config', () => {
         INITIAL_BLOCKS_AMOUNT: 8,
         MEMPOOL_BLOCKS_AMOUNT: 8,
         INDEXING_BLOCKS_AMOUNT: 11000,
-        PRICE_FEED_UPDATE_INTERVAL: 600,
         USE_SECOND_NODE_FOR_MINFEE: false,
         EXTERNAL_ASSETS: [],
         EXTERNAL_MAX_RETRY: 1,
@@ -36,7 +36,12 @@ describe('Mempool Backend Config', () => {
         USER_AGENT: 'mempool',
         STDOUT_LOG_MIN_PRIORITY: 'debug',
         POOLS_JSON_TREE_URL: 'https://api.github.com/repos/mempool/mining-pools/git/trees/master',
-        POOLS_JSON_URL: 'https://raw.githubusercontent.com/mempool/mining-pools/master/pools.json'
+        POOLS_JSON_URL: 'https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json',
+        AUDIT: false,
+        ADVANCED_GBT_AUDIT: false,
+        ADVANCED_GBT_MEMPOOL: false,
+        CPFP_INDEXING: false,
+        MAX_BLOCKS_BULK_QUERY: 0,
       });
 
       expect(config.ELECTRUM).toStrictEqual({ HOST: '127.0.0.1', PORT: 3306, TLS_ENABLED: true });
@@ -136,5 +141,4 @@ describe('Mempool Backend Config', () => {
       expect(config.EXTERNAL_DATA_SERVER).toStrictEqual(fixture.EXTERNAL_DATA_SERVER);
     });
   });
-
 });

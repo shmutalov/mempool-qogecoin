@@ -1,10 +1,10 @@
-import { Component, OnInit, ChangeDetectionStrategy, Input } from '@angular/core';
-import { BehaviorSubject, combineLatest, concat, Observable, timer } from 'rxjs';
-import { delayWhen, map, retryWhen, scan, skip, switchMap, tap } from 'rxjs/operators';
-import { BlockExtended } from 'src/app/interfaces/node-api.interface';
-import { ApiService } from 'src/app/services/api.service';
-import { StateService } from 'src/app/services/state.service';
-import { WebsocketService } from 'src/app/services/websocket.service';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, Input } from '@angular/core';
+import { BehaviorSubject, combineLatest, concat, Observable, timer, EMPTY, Subscription, of } from 'rxjs';
+import { catchError, delayWhen, map, retryWhen, scan, skip, switchMap, tap } from 'rxjs/operators';
+import { BlockExtended } from '../../interfaces/node-api.interface';
+import { ApiService } from '../../services/api.service';
+import { StateService } from '../../services/state.service';
+import { WebsocketService } from '../../services/websocket.service';
 
 @Component({
   selector: 'app-blocks-list',
@@ -12,13 +12,19 @@ import { WebsocketService } from 'src/app/services/websocket.service';
   styleUrls: ['./blocks-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class BlocksList implements OnInit {
+export class BlocksList implements OnInit, OnDestroy {
   @Input() widget: boolean = false;
 
   blocks$: Observable<BlockExtended[]> = undefined;
+  auditScores: { [hash: string]: number | void } = {};
+
+  auditScoreSubscription: Subscription;
+  latestScoreSubscription: Subscription;
 
   indexingAvailable = false;
+  auditAvailable = false;
   isLoading = true;
+  loadingScores = true;
   fromBlockHeight = undefined;
   paginationMaxSize: number;
   page = 1;
@@ -39,6 +45,7 @@ export class BlocksList implements OnInit {
   ngOnInit(): void {
     this.indexingAvailable = (this.stateService.env.BASE_MODULE === 'mempool' &&
       this.stateService.env.MINING_DASHBOARD === true);
+    this.auditAvailable = this.indexingAvailable && this.stateService.env.AUDIT;
 
     if (!this.widget) {
       this.websocketService.want(['blocks']);
@@ -105,6 +112,55 @@ export class BlocksList implements OnInit {
           return acc;
         }, [])
       );
+
+    if (this.indexingAvailable && this.auditAvailable) {
+      this.auditScoreSubscription = this.fromHeightSubject.pipe(
+        switchMap((fromBlockHeight) => {
+          this.loadingScores = true;
+          return this.apiService.getBlockAuditScores$(this.page === 1 ? undefined : fromBlockHeight)
+            .pipe(
+              catchError(() => {
+                return EMPTY;
+              })
+            );
+        })
+      ).subscribe((scores) => {
+        Object.values(scores).forEach(score => {
+          this.auditScores[score.hash] = score?.matchRate != null ? score.matchRate : null;
+        });
+        this.loadingScores = false;
+      });
+
+      this.latestScoreSubscription = this.stateService.blocks$.pipe(
+        switchMap((block) => {
+          if (block[0]?.extras?.matchRate != null) {
+            return of({
+              hash: block[0].id,
+              matchRate: block[0]?.extras?.matchRate,
+            });
+          }
+          else if (block[0]?.id && this.auditScores[block[0].id] === undefined) {
+            return this.apiService.getBlockAuditScore$(block[0].id)
+              .pipe(
+                catchError(() => {
+                  return EMPTY;
+                })
+              );
+          } else {
+            return EMPTY;
+          }
+        }),
+      ).subscribe((score) => {
+        if (score && score.hash) {
+          this.auditScores[score.hash] = score?.matchRate != null ? score.matchRate : null;
+        }
+      });
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.auditScoreSubscription?.unsubscribe();
+    this.latestScoreSubscription?.unsubscribe();
   }
 
   pageChange(page: number) {

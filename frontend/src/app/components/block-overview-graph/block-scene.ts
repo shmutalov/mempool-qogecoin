@@ -1,6 +1,6 @@
 import { FastVertexArray } from './fast-vertex-array';
 import TxView from './tx-view';
-import { TransactionStripped } from 'src/app/interfaces/websocket.interface';
+import { TransactionStripped } from '../../interfaces/websocket.interface';
 import { Position, Square, ViewUpdateParams } from './sprite-types';
 
 export default class BlockScene {
@@ -9,6 +9,7 @@ export default class BlockScene {
   txs: { [key: string]: TxView };
   orientation: string;
   flip: boolean;
+  highlightingEnabled: boolean;
   width: number;
   height: number;
   gridWidth: number;
@@ -22,14 +23,14 @@ export default class BlockScene {
   animateUntil = 0;
   dirty: boolean;
 
-  constructor({ width, height, resolution, blockLimit, orientation, flip, vertexArray }:
+  constructor({ width, height, resolution, blockLimit, orientation, flip, vertexArray, highlighting }:
       { width: number, height: number, resolution: number, blockLimit: number,
-        orientation: string, flip: boolean, vertexArray: FastVertexArray }
+        orientation: string, flip: boolean, vertexArray: FastVertexArray, highlighting: boolean }
   ) {
-    this.init({ width, height, resolution, blockLimit, orientation, flip, vertexArray });
+    this.init({ width, height, resolution, blockLimit, orientation, flip, vertexArray, highlighting });
   }
 
-  resize({ width = this.width, height = this.height }: { width?: number, height?: number}): void {
+  resize({ width = this.width, height = this.height, animate = true }: { width?: number, height?: number, animate: boolean }): void {
     this.width = width;
     this.height = height;
     this.gridSize = this.width / this.gridWidth;
@@ -37,6 +38,22 @@ export default class BlockScene {
     this.unitWidth = this.gridSize - (this.unitPadding * 2);
 
     this.dirty = true;
+    if (this.initialised && this.scene) {
+      this.updateAll(performance.now(), 50, 'left', animate);
+    }
+  }
+
+  setOrientation(orientation: string, flip: boolean): void {
+    this.orientation = orientation;
+    this.flip = flip;
+    this.dirty = true;
+    if (this.initialised && this.scene) {
+      this.updateAll(performance.now(), 50);
+    }
+  }
+
+  setHighlighting(enabled: boolean): void {
+    this.highlightingEnabled = enabled;
     if (this.initialised && this.scene) {
       this.updateAll(performance.now(), 50);
     }
@@ -58,7 +75,7 @@ export default class BlockScene {
     });
     this.layout = new BlockLayout({ width: this.gridWidth, height: this.gridHeight });
     txs.forEach(tx => {
-      const txView = new TxView(tx, this.vertexArray);
+      const txView = new TxView(tx, this);
       this.txs[tx.txid] = txView;
       this.place(txView);
       this.saveGridToScreenPosition(txView);
@@ -105,7 +122,7 @@ export default class BlockScene {
     });
     txs.forEach(tx => {
       if (!this.txs[tx.txid]) {
-        this.txs[tx.txid] = new TxView(tx, this.vertexArray);
+        this.txs[tx.txid] = new TxView(tx, this);
       }
     });
 
@@ -147,7 +164,7 @@ export default class BlockScene {
     if (resetLayout) {
       add.forEach(tx => {
         if (!this.txs[tx.txid]) {
-          this.txs[tx.txid] = new TxView(tx, this.vertexArray);
+          this.txs[tx.txid] = new TxView(tx, this);
         }
       });
       this.layout = new BlockLayout({ width: this.gridWidth, height: this.gridHeight });
@@ -157,7 +174,7 @@ export default class BlockScene {
     } else {
       // try to insert new txs directly
       const remaining = [];
-      add.map(tx => new TxView(tx, this.vertexArray)).sort(feeRateDescending).forEach(tx => {
+      add.map(tx => new TxView(tx, this)).sort(feeRateDescending).forEach(tx => {
         if (!this.tryInsertByFee(tx)) {
           remaining.push(tx);
         }
@@ -183,13 +200,14 @@ export default class BlockScene {
     this.animateUntil = Math.max(this.animateUntil, tx.setHover(value));
   }
 
-  private init({ width, height, resolution, blockLimit, orientation, flip, vertexArray }:
+  private init({ width, height, resolution, blockLimit, orientation, flip, vertexArray, highlighting }:
       { width: number, height: number, resolution: number, blockLimit: number,
-        orientation: string, flip: boolean, vertexArray: FastVertexArray }
+        orientation: string, flip: boolean, vertexArray: FastVertexArray, highlighting: boolean }
   ): void {
     this.orientation = orientation;
     this.flip = flip;
     this.vertexArray = vertexArray;
+    this.highlightingEnabled = highlighting;
 
     this.scene = {
       count: 0,
@@ -203,7 +221,7 @@ export default class BlockScene {
     this.vbytesPerUnit = blockLimit / Math.pow(resolution / 1.02, 2);
     this.gridWidth = resolution;
     this.gridHeight = resolution;
-    this.resize({ width, height });
+    this.resize({ width, height, animate: true });
     this.layout = new BlockLayout({ width: this.gridWidth, height: this.gridHeight });
 
     this.txs = {};
@@ -216,14 +234,14 @@ export default class BlockScene {
     this.animateUntil = Math.max(this.animateUntil, tx.update(update));
   }
 
-  private updateTx(tx: TxView, startTime: number, delay: number, direction: string = 'left'): void {
+  private updateTx(tx: TxView, startTime: number, delay: number, direction: string = 'left', animate: boolean = true): void {
     if (tx.dirty || this.dirty) {
       this.saveGridToScreenPosition(tx);
-      this.setTxOnScreen(tx, startTime, delay, direction);
+      this.setTxOnScreen(tx, startTime, delay, direction, animate);
     }
   }
 
-  private setTxOnScreen(tx: TxView, startTime: number, delay: number = 50, direction: string = 'left'): void {
+  private setTxOnScreen(tx: TxView, startTime: number, delay: number = 50, direction: string = 'left', animate: boolean = true): void {
     if (!tx.initialised) {
       const txColor = tx.getColor();
       this.applyTxUpdate(tx, {
@@ -243,30 +261,42 @@ export default class BlockScene {
           position: tx.screenPosition,
           color: txColor
         },
-        duration: 1000,
+        duration: animate ? 1000 : 1,
         start: startTime,
-        delay,
+        delay: animate ? delay : 0,
       });
     } else {
       this.applyTxUpdate(tx, {
         display: {
           position: tx.screenPosition
         },
-        duration: 1000,
-        minDuration: 500,
+        duration: animate ? 1000 : 0,
+        minDuration: animate ? 500 : 0,
         start: startTime,
-        delay,
-        adjust: true
+        delay: animate ? delay : 0,
+        adjust: animate
       });
+      if (!animate) {
+        this.applyTxUpdate(tx, {
+          display: {
+            position: tx.screenPosition
+          },
+          duration: 0,
+          minDuration: 0,
+          start: startTime,
+          delay: 0,
+          adjust: false
+        });
+      }
     }
   }
 
-  private updateAll(startTime: number, delay: number = 50, direction: string = 'left'): void {
+  private updateAll(startTime: number, delay: number = 50, direction: string = 'left', animate: boolean = true): void {
     this.scene.count = 0;
     const ids = this.getTxList();
     startTime = startTime || performance.now();
     for (const id of ids) {
-      this.updateTx(this.txs[id], startTime, delay, direction);
+      this.updateTx(this.txs[id], startTime, delay, direction, animate);
     }
     this.dirty = false;
   }

@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, Input, OnChanges } from '@angular/core';
 import { Vin, Vout } from '../../interfaces/electrs.interface';
-import { StateService } from 'src/app/services/state.service';
-import { parseMultisigScript } from 'src/app/bitcoin.utils';
+import { StateService } from '../../services/state.service';
+import { parseMultisigScript } from '../../bitcoin.utils';
 
 @Component({
   selector: 'app-address-labels',
@@ -36,7 +36,9 @@ export class AddressLabelsComponent implements OnChanges {
 
   handleChannel() {
     const type = this.vout ? 'open' : 'close';
-    this.label = `Channel ${type}: ${this.channel.node_left.alias} <> ${this.channel.node_right.alias}`;
+    const leftNodeName = this.channel.node_left.alias || this.channel.node_left.public_key.substring(0, 10);
+    const rightNodeName = this.channel.node_right.alias || this.channel.node_right.public_key.substring(0, 10);
+    this.label = `Channel ${type}: ${leftNodeName} <> ${rightNodeName}`;
   }
 
   handleVin() {

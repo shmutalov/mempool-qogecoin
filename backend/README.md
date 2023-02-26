@@ -110,6 +110,11 @@ Run the Mempool backend:
 
 ```
 npm run start
+
+```
+You can also set env var `MEMPOOL_CONFIG_FILE` to specify a custom config file location:
+```
+MEMPOOL_CONFIG_FILE=/path/to/mempool-config.json npm run start
 ```
 
 When it's running, you should see output like this:
@@ -155,7 +160,7 @@ npm install -g ts-node nodemon
 Then, run the watcher:
 
 ```
-nodemon src/index.ts --ignore cache/ --ignore pools.json
+nodemon src/index.ts --ignore cache/
 ```
 
 `nodemon` should be in npm's global binary folder. If needed, you can determine where that is with `npm -g bin`.
@@ -213,3 +218,31 @@ Generate block at regular interval (every 10 seconds in this example):
    ```
    watch -n 10 "./src/bitcoin-cli -regtest -rpcport=8332 generatetoaddress 1 $address"
    ```
+
+### Mining pools update
+
+By default, mining pools will be not automatically updated regularly (`config.MEMPOOL.AUTOMATIC_BLOCK_REINDEXING` is set to `false`). 
+
+To manually update your mining pools, you can use the `--update-pools` command line flag when you run the nodejs backend. For example `npm run start --update-pools`. This will trigger the mining pools update and automatically re-index appropriate blocks.
+
+You can enabled the automatic mining pools update by settings `config.MEMPOOL.AUTOMATIC_BLOCK_REINDEXING` to `true` in your `mempool-config.json`.
+
+When a `coinbase tag` or `coinbase address` change is detected, all blocks tagged to the `unknown` mining pools (starting from height 130635) will be deleted from the `blocks` table. Additionaly, all blocks which were tagged to the pool which has been updated will also be deleted from the `blocks` table. Of course, those blocks will be automatically reindexed.
+
+### Re-index tables
+
+You can manually force the nodejs backend to drop all data from a specified set of tables for future re-index. This is mostly useful for the mining dashboard and the lightning explorer.
+
+Use the `--reindex` command to specify a list of comma separated table which will be truncated at start. Note that a 5 seconds delay will be observed before truncating tables in order to give you a chance to cancel (CTRL+C) in case of misuse of the command.
+
+Usage:
+```
+npm run start --reindex=blocks,hashrates
+```
+Example output:
+```
+Feb 13 14:55:27 [63246] WARN: <lightning> Indexed data for "hashrates" tables will be erased in 5 seconds (using '--reindex')
+Feb 13 14:55:32 [63246] NOTICE: <lightning> Table hashrates has been truncated
+```
+
+Reference: https://github.com/mempool/mempool/pull/1269

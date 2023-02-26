@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { CpfpInfo, OptimizedMempoolStats, AddressInformation, LiquidPegs, ITranslators,
-  PoolStat, BlockExtended, TransactionStripped, RewardStats } from '../interfaces/node-api.interface';
+  PoolStat, BlockExtended, TransactionStripped, RewardStats, AuditScore, BlockSizesAndWeights } from '../interfaces/node-api.interface';
 import { Observable } from 'rxjs';
 import { StateService } from './state.service';
 import { WebsocketResponse } from '../interfaces/websocket.interface';
-import { Outspend } from '../interfaces/electrs.interface';
+import { Outspend, Transaction } from '../interfaces/electrs.interface';
+import { Conversion } from './price.service';
 
 @Injectable({
   providedIn: 'root'
@@ -119,6 +120,14 @@ export class ApiService {
     return this.httpClient.get<AddressInformation>(this.apiBaseUrl + this.apiBasePath + '/api/v1/validate-address/' + address);
   }
 
+  getRbfHistory$(txid: string): Observable<string[]> {
+    return this.httpClient.get<string[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/tx/' + txid + '/replaces');
+  }
+
+  getRbfCachedTx$(txid: string): Observable<Transaction> {
+    return this.httpClient.get<Transaction>(this.apiBaseUrl + this.apiBasePath + '/api/v1/tx/' + txid + '/cached');
+  }
+
   listLiquidPegsMonth$(): Observable<LiquidPegs[]> {
     return this.httpClient.get<LiquidPegs[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/liquid/pegs/month');
   }
@@ -214,8 +223,8 @@ export class ApiService {
     );
   }
 
-  getHistoricalBlockSizesAndWeights$(interval: string | undefined) : Observable<any> {
-    return this.httpClient.get<any[]>(
+  getHistoricalBlockSizesAndWeights$(interval: string | undefined) : Observable<HttpResponse<BlockSizesAndWeights>> {
+    return this.httpClient.get<BlockSizesAndWeights>(
       this.apiBaseUrl + this.apiBasePath + `/api/v1/mining/blocks/sizes-weights` +
       (interval !== undefined ? `/${interval}` : ''), { observe: 'response' }
     );
@@ -230,7 +239,20 @@ export class ApiService {
 
   getBlockAudit$(hash: string) : Observable<any> {
     return this.httpClient.get<any>(
-      this.apiBaseUrl + this.apiBasePath + `/api/v1/mining/blocks/audit/` + hash, { observe: 'response' }
+      this.apiBaseUrl + this.apiBasePath + `/api/v1/block/${hash}/audit-summary`, { observe: 'response' }
+    );
+  }
+
+  getBlockAuditScores$(from: number): Observable<AuditScore[]> {
+    return this.httpClient.get<AuditScore[]>(
+      this.apiBaseUrl + this.apiBasePath + `/api/v1/mining/blocks/audit/scores` +
+      (from !== undefined ? `/${from}` : ``)
+    );
+  }
+
+  getBlockAuditScore$(hash: string) : Observable<any> {
+    return this.httpClient.get<any>(
+      this.apiBaseUrl + this.apiBasePath + `/api/v1/mining/blocks/audit/score/` + hash
     );
   }
 
@@ -242,12 +264,12 @@ export class ApiService {
     return this.httpClient.get<any>(this.apiBaseUrl + this.apiBasePath + `/api/v1/enterprise/info/` + name);
   }
 
-  getChannelByTxIds$(txIds: string[]): Observable<{ inputs: any[], outputs: any[] }> {
+  getChannelByTxIds$(txIds: string[]): Observable<any[]> {
     let params = new HttpParams();
     txIds.forEach((txId: string) => {
       params = params.append('txId[]', txId);
     });
-    return this.httpClient.get<{ inputs: any[], outputs: any[] }>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/channels/txids/', { params });
+    return this.httpClient.get<any[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/channels/txids/', { params });
   }
 
   lightningSearch$(searchText: string): Observable<any[]> {
@@ -255,9 +277,8 @@ export class ApiService {
     return this.httpClient.get<any[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/search', { params });
   }
 
-  getNodesPerAs(groupBy: 'capacity' | 'node-count', showTorNodes: boolean): Observable<any> {
-    return this.httpClient.get<any[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/nodes/isp-ranking'
-      + `?groupBy=${groupBy}&showTor=${showTorNodes}`);
+  getNodesPerIsp(): Observable<any> {
+    return this.httpClient.get<any[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/nodes/isp-ranking');
   }
 
   getNodeForCountry$(country: string): Observable<any> {
@@ -268,14 +289,26 @@ export class ApiService {
     return this.httpClient.get<any[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/nodes/isp/' + isp);
   }
 
-  getNodesPerCountry(): Observable<any> {
+  getNodesPerCountry$(): Observable<any> {
     return this.httpClient.get<any[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/nodes/countries');
   }
 
-  getChannelsGeo$(publicKey?: string): Observable<any> {
+  getWorldNodes$(): Observable<any> {
+    return this.httpClient.get<any[]>(this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/nodes/world');
+  }
+
+  getChannelsGeo$(publicKey?: string, style?: 'graph' | 'nodepage' | 'widget' | 'channelpage'): Observable<any> {
     return this.httpClient.get<any[]>(
       this.apiBaseUrl + this.apiBasePath + '/api/v1/lightning/channels-geo' +
-        (publicKey !== undefined ? `/${publicKey}` : '')
+        (publicKey !== undefined ? `/${publicKey}`   : '') +
+        (style     !== undefined ? `?style=${style}` : '')
+    );
+  }
+
+  getHistoricalPrice$(timestamp: number | undefined): Observable<Conversion> {
+    return this.httpClient.get<Conversion>(
+      this.apiBaseUrl + this.apiBasePath + '/api/v1/historical-price' +
+        (timestamp ? `?timestamp=${timestamp}` : '')
     );
   }
 }

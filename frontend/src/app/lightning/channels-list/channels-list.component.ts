@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, OnInit, Output } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import { BehaviorSubject, merge, Observable } from 'rxjs';
 import { map, switchMap, tap } from 'rxjs/operators';
-import { isMobile } from 'src/app/shared/common.utils';
+import { isMobile } from '../../shared/common.utils';
 import { LightningApiService } from '../lightning-api.service';
 
 @Component({
@@ -14,6 +14,7 @@ import { LightningApiService } from '../lightning-api.service';
 export class ChannelsListComponent implements OnInit, OnChanges {
   @Input() publicKey: string;
   @Output() channelsStatusChangedEvent = new EventEmitter<string>();
+  @Output() loadingEvent = new EventEmitter<boolean>(false);
   channels$: Observable<any>;
 
   // @ts-ignore
@@ -22,14 +23,15 @@ export class ChannelsListComponent implements OnInit, OnChanges {
   itemsPerPage = 10;
   page = 1;
   channelsPage$ = new BehaviorSubject<number>(1);
-  channelStatusForm: FormGroup;
+  channelStatusForm: UntypedFormGroup;
   defaultStatus = 'open';
   status = 'open';
   publicKeySize = 25;
+  isLoading = false;
 
   constructor(
     private lightningApiService: LightningApiService,
-    private formBuilder: FormBuilder,
+    private formBuilder: UntypedFormBuilder,
   ) { 
     this.channelStatusForm = this.formBuilder.group({
       status: [this.defaultStatus],
@@ -47,7 +49,7 @@ export class ChannelsListComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(): void {
-    this.channelStatusForm.get('status').setValue(this.defaultStatus, { emitEvent: false });
+    this.channelStatusForm.get('status').setValue(this.defaultStatus, { emitEvent: true });
     this.channelsPage$.next(1);
 
     this.channels$ = merge(
@@ -56,6 +58,8 @@ export class ChannelsListComponent implements OnInit, OnChanges {
     )
     .pipe(
       tap((val) => {
+        this.isLoading = true;
+        this.loadingEvent.emit(true);
         if (typeof val === 'string') {
           this.status = val;
           this.page = 1;
@@ -64,13 +68,15 @@ export class ChannelsListComponent implements OnInit, OnChanges {
         }
       }),
       switchMap(() => {
-          this.channelsStatusChangedEvent.emit(this.status);
-          return this.lightningApiService.getChannelsByNodeId$(this.publicKey, (this.page - 1) * this.itemsPerPage, this.status);
+        this.channelsStatusChangedEvent.emit(this.status);
+        return this.lightningApiService.getChannelsByNodeId$(this.publicKey, (this.page - 1) * this.itemsPerPage, this.status);
       }),
       map((response) => {
+        this.isLoading = false;
+        this.loadingEvent.emit(false);
         return {
           channels: response.body,
-          totalItems: parseInt(response.headers.get('x-total-count'), 10) + 1 
+          totalItems: parseInt(response.headers.get('x-total-count'), 10)
         };
       }),
     );

@@ -1,7 +1,10 @@
-const configFile = require('../mempool-config.json');
+const configFromFile = require(
+    process.env.MEMPOOL_CONFIG_FILE ? process.env.MEMPOOL_CONFIG_FILE : '../mempool-config.json'
+);
 
 interface IConfig {
   MEMPOOL: {
+    ENABLED: boolean;
     NETWORK: 'mainnet' | 'testnet' | 'signet' | 'liquid' | 'liquidtestnet';
     BACKEND: 'esplora' | 'electrum' | 'none';
     HTTP_PORT: number;
@@ -16,7 +19,6 @@ interface IConfig {
     MEMPOOL_BLOCKS_AMOUNT: number;
     INDEXING_BLOCKS_AMOUNT: number;
     BLOCKS_SUMMARIES_INDEXING: boolean;
-    PRICE_FEED_UPDATE_INTERVAL: number;
     USE_SECOND_NODE_FOR_MINFEE: boolean;
     EXTERNAL_ASSETS: string[];
     EXTERNAL_MAX_RETRY: number;
@@ -26,6 +28,11 @@ interface IConfig {
     AUTOMATIC_BLOCK_REINDEXING: boolean;
     POOLS_JSON_URL: string,
     POOLS_JSON_TREE_URL: string,
+    AUDIT: boolean;
+    ADVANCED_GBT_AUDIT: boolean;
+    ADVANCED_GBT_MEMPOOL: boolean;
+    CPFP_INDEXING: boolean;
+    MAX_BLOCKS_BULK_QUERY: number;
   };
   ESPLORA: {
     REST_API_URL: string;
@@ -36,6 +43,9 @@ interface IConfig {
     TOPOLOGY_FOLDER: string;
     STATS_REFRESH_INTERVAL: number;
     GRAPH_REFRESH_INTERVAL: number;
+    LOGGER_UPDATE_INTERVAL: number;
+    FORENSICS_INTERVAL: number;
+    FORENSICS_RATE_LIMIT: number;
   };
   LND: {
     TLS_CERT_PATH: string;
@@ -116,6 +126,7 @@ interface IConfig {
 
 const defaults: IConfig = {
   'MEMPOOL': {
+    'ENABLED': true,
     'NETWORK': 'mainnet',
     'BACKEND': 'none',
     'HTTP_PORT': 8999,
@@ -130,7 +141,6 @@ const defaults: IConfig = {
     'MEMPOOL_BLOCKS_AMOUNT': 8,
     'INDEXING_BLOCKS_AMOUNT': 11000, // 0 = disable indexing, -1 = index all blocks
     'BLOCKS_SUMMARIES_INDEXING': false,
-    'PRICE_FEED_UPDATE_INTERVAL': 600,
     'USE_SECOND_NODE_FOR_MINFEE': false,
     'EXTERNAL_ASSETS': [],
     'EXTERNAL_MAX_RETRY': 1,
@@ -138,8 +148,13 @@ const defaults: IConfig = {
     'USER_AGENT': 'mempool',
     'STDOUT_LOG_MIN_PRIORITY': 'debug',
     'AUTOMATIC_BLOCK_REINDEXING': false,
-    'POOLS_JSON_URL': 'https://raw.githubusercontent.com/mempool/mining-pools/master/pools.json',
+    'POOLS_JSON_URL': 'https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json',
     'POOLS_JSON_TREE_URL': 'https://api.github.com/repos/mempool/mining-pools/git/trees/master',
+    'AUDIT': false,
+    'ADVANCED_GBT_AUDIT': false,
+    'ADVANCED_GBT_MEMPOOL': false,
+    'CPFP_INDEXING': false,
+    'MAX_BLOCKS_BULK_QUERY': 0,
   },
   'ESPLORA': {
     'REST_API_URL': 'http://127.0.0.1:3000',
@@ -191,6 +206,9 @@ const defaults: IConfig = {
     'TOPOLOGY_FOLDER': '',
     'STATS_REFRESH_INTERVAL': 600,
     'GRAPH_REFRESH_INTERVAL': 600,
+    'LOGGER_UPDATE_INTERVAL': 30,
+    'FORENSICS_INTERVAL': 43200,
+    'FORENSICS_RATE_LIMIT': 20,
   },
   'LND': {
     'TLS_CERT_PATH': '',
@@ -220,11 +238,11 @@ const defaults: IConfig = {
     'BISQ_URL': 'https://bisq.markets/api',
     'BISQ_ONION': 'http://bisqmktse2cabavbr2xjq7xw3h6g5ottemo5rolfcwt6aly6tp5fdryd.onion/api'
   },
-  "MAXMIND": {
+  'MAXMIND': {
     'ENABLED': false,
-    "GEOLITE2_CITY": "/usr/local/share/GeoIP/GeoLite2-City.mmdb",
-    "GEOLITE2_ASN": "/usr/local/share/GeoIP/GeoLite2-ASN.mmdb",
-    "GEOIP2_ISP": "/usr/local/share/GeoIP/GeoIP2-ISP.mmdb"
+    'GEOLITE2_CITY': '/usr/local/share/GeoIP/GeoLite2-City.mmdb',
+    'GEOLITE2_ASN': '/usr/local/share/GeoIP/GeoLite2-ASN.mmdb',
+    'GEOIP2_ISP': '/usr/local/share/GeoIP/GeoIP2-ISP.mmdb'
   },
 };
 
@@ -247,7 +265,7 @@ class Config implements IConfig {
   MAXMIND: IConfig['MAXMIND'];
 
   constructor() {
-    const configs = this.merge(configFile, defaults);
+    const configs = this.merge(configFromFile, defaults);
     this.MEMPOOL = configs.MEMPOOL;
     this.ESPLORA = configs.ESPLORA;
     this.ELECTRUM = configs.ELECTRUM;

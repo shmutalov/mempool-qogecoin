@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { combineLatest, merge, Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
-import { SeoService } from 'src/app/services/seo.service';
-import { WebsocketService } from 'src/app/services/websocket.service';
+import { SeoService } from '../../services/seo.service';
+import { WebsocketService } from '../../services/websocket.service';
 import { BisqApiService } from '../bisq-api.service';
 import { OffersMarket, Trade } from '../bisq.interfaces';
 
@@ -19,7 +19,7 @@ export class BisqMarketComponent implements OnInit, OnDestroy {
   currency$: Observable<any>;
   offers$: Observable<OffersMarket>;
   trades$: Observable<Trade[]>;
-  radioGroupForm: FormGroup;
+  radioGroupForm: UntypedFormGroup;
   defaultInterval = 'day';
 
   isLoadingGraph = false;
@@ -28,7 +28,7 @@ export class BisqMarketComponent implements OnInit, OnDestroy {
     private websocketService: WebsocketService,
     private route: ActivatedRoute,
     private bisqApiService: BisqApiService,
-    private formBuilder: FormBuilder,
+    private formBuilder: UntypedFormBuilder,
     private seoService: SeoService,
     private router: Router,
   ) { }

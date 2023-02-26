@@ -35,24 +35,31 @@ export class Common {
   }
 
   static getFeesInRange(transactions: TransactionExtended[], rangeLength: number) {
-    const arr = [transactions[transactions.length - 1].effectiveFeePerVsize];
+    const filtered: TransactionExtended[] = [];
+    let lastValidRate = Infinity;
+    // filter out anomalous fee rates to ensure monotonic range
+    for (const tx of transactions) {
+      if (tx.effectiveFeePerVsize <= lastValidRate) {
+        filtered.push(tx);
+        lastValidRate = tx.effectiveFeePerVsize;
+      }
+    }
+    const arr = [filtered[filtered.length - 1].effectiveFeePerVsize];
     const chunk = 1 / (rangeLength - 1);
     let itemsToAdd = rangeLength - 2;
 
     while (itemsToAdd > 0) {
-      arr.push(transactions[Math.floor(transactions.length * chunk * itemsToAdd)].effectiveFeePerVsize);
+      arr.push(filtered[Math.floor(filtered.length * chunk * itemsToAdd)].effectiveFeePerVsize);
       itemsToAdd--;
     }
 
-    arr.push(transactions[0].effectiveFeePerVsize);
+    arr.push(filtered[0].effectiveFeePerVsize);
     return arr;
   }
 
   static findRbfTransactions(added: TransactionExtended[], deleted: TransactionExtended[]): { [txid: string]: TransactionExtended } {
     const matches: { [txid: string]: TransactionExtended } = {};
     deleted
-      // The replaced tx must have at least one input with nSequence < maxint-1 (That’s the opt-in)
-      .filter((tx) => tx.vin.some((vin) => vin.sequence < 0xfffffffe))
       .forEach((deletedTx) => {
         const foundMatches = added.find((addedTx) => {
           // The new tx must, absolutely speaking, pay at least as much fee as the replaced tx.
@@ -61,7 +68,7 @@ export class Common {
             && addedTx.feePerVsize > deletedTx.feePerVsize
             // Spends one or more of the same inputs
             && deletedTx.vin.some((deletedVin) =>
-              addedTx.vin.some((vin) => vin.txid === deletedVin.txid));
+              addedTx.vin.some((vin) => vin.txid === deletedVin.txid && vin.vout === deletedVin.vout));
             });
         if (foundMatches) {
           matches[deletedTx.txid] = foundMatches;
@@ -187,6 +194,13 @@ export class Common {
     );
   }
 
+  static cpfpIndexingEnabled(): boolean {
+    return (
+      Common.indexingEnabled() &&
+      config.MEMPOOL.CPFP_INDEXING === true
+    );
+  }
+
   static setDateMidnight(date: Date): void {
     date.setUTCHours(0);
     date.setUTCMinutes(0);
@@ -207,6 +221,10 @@ export class Common {
 
   /** Decodes a channel id returned by lnd as uint64 to a short channel id */
   static channelIntegerIdToShortId(id: string): string {
+    if (id.indexOf('/') !== -1) {
+      id = id.slice(0, -2);
+    }
+    
     if (id.indexOf('x') !== -1) { // Already a short id
       return id;
     }
@@ -224,34 +242,75 @@ export class Common {
     return d.toISOString().split('T')[0] + ' ' + d.toTimeString().split(' ')[0];
   }
 
-  static formatSocket(publicKey: string, socket: {network: string, addr: string}): NodeSocket {
+  static findSocketNetwork(addr: string): {network: string | null, url: string} {
     let network: string | null = null;
+    let url = addr.split('://')[1];
 
-    if (config.LIGHTNING.BACKEND === 'cln') {
-      network = socket.network;
-    } else if (config.LIGHTNING.BACKEND === 'lnd') {
-      if (socket.addr.indexOf('onion') !== -1) {
-        if (socket.addr.split('.')[0].length >= 56) {
-          network = 'torv3';
-        } else {
-          network = 'torv2';
-        }
-      } else if (socket.addr.indexOf('i2p') !== -1) {
-        network = 'i2p';
+    if (!url) {
+      return {
+        network: null,
+        url: addr,
+      };
+    }
+
+    if (addr.indexOf('onion') !== -1) {
+      if (url.split('.')[0].length >= 56) {
+        network = 'torv3';
       } else {
-        const ipv = isIP(socket.addr.split(':')[0]);
-        if (ipv === 4) {
-          network = 'ipv4';
-        } else if (ipv === 6) {
-          network = 'ipv6';
-        }
+        network = 'torv2';
       }
+    } else if (addr.indexOf('i2p') !== -1) {
+      network = 'i2p';
+    } else if (addr.indexOf('ipv4') !== -1) {
+      const ipv = isIP(url.split(':')[0]);
+      if (ipv === 4) {
+        network = 'ipv4';
+      } else {
+        return {
+          network: null,
+          url: addr,
+        };
+      }
+    } else if (addr.indexOf('ipv6') !== -1) {
+      url = url.split('[')[1].split(']')[0];
+      const ipv = isIP(url);
+      if (ipv === 6) {
+        const parts = addr.split(':');
+        network = 'ipv6';
+        url = `[${url}]:${parts[parts.length - 1]}`;
+      } else {
+        return {
+          network: null,
+          url: addr,
+        };
+      }
+    } else {
+      return {
+        network: null,
+        url: addr,
+      };
     }
 
     return {
-      publicKey: publicKey,
       network: network,
-      addr: socket.addr,
+      url: url,
     };
+  }
+
+  static formatSocket(publicKey: string, socket: {network: string, addr: string}): NodeSocket {
+    if (config.LIGHTNING.BACKEND === 'cln') {
+      return {
+        publicKey: publicKey,
+        network: socket.network,
+        addr: socket.addr,
+      };
+    } else /* if (config.LIGHTNING.BACKEND === 'lnd') */ {
+      const formatted = this.findSocketNetwork(socket.addr);
+      return {
+        publicKey: publicKey,
+        network: formatted.network,
+        addr: formatted.url,
+      };
+    }
   }
 }

@@ -1,8 +1,7 @@
-import bitcoinApi from './bitcoin/bitcoin-api-factory';
 import { TransactionExtended, TransactionMinerInfo } from '../mempool.interfaces';
 import { IEsploraApi } from './bitcoin/esplora-api.interface';
-import config from '../config';
 import { Common } from './common';
+import bitcoinApi, { bitcoinCoreApi } from './bitcoin/bitcoin-api-factory';
 
 class TransactionUtils {
   constructor() { }
@@ -15,14 +14,26 @@ class TransactionUtils {
       vout: tx.vout
         .map((vout) => ({
           scriptpubkey_address: vout.scriptpubkey_address,
+          scriptpubkey_asm: vout.scriptpubkey_asm,
           value: vout.value
         }))
         .filter((vout) => vout.value)
     };
   }
 
-  public async $getTransactionExtended(txId: string, addPrevouts = false, lazyPrevouts = false): Promise<TransactionExtended> {
-    const transaction: IEsploraApi.Transaction = await bitcoinApi.$getRawTransaction(txId, false, addPrevouts, lazyPrevouts);
+  /**
+   * @param txId 
+   * @param addPrevouts 
+   * @param lazyPrevouts 
+   * @param forceCore - See https://github.com/mempool/mempool/issues/2904
+   */
+  public async $getTransactionExtended(txId: string, addPrevouts = false, lazyPrevouts = false, forceCore = false): Promise<TransactionExtended> {
+    let transaction: IEsploraApi.Transaction;
+    if (forceCore === true) {
+      transaction  = await bitcoinCoreApi.$getRawTransaction(txId, true);
+    } else {
+      transaction  = await bitcoinApi.$getRawTransaction(txId, false, addPrevouts, lazyPrevouts);
+    }
     return this.extendTransaction(transaction);
   }
 

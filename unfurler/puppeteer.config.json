@@ -1,5 +1,6 @@
 {
   "headless": true,
+  "dumpio": true,
   "defaultViewport": {
     "width": 1200,
     "height": 600
@@ -41,6 +42,6 @@
     "--use-mock-keychain",
     "--ignore-gpu-blacklist",
     "--ignore-gpu-blocklist",
-    "--use-gl=swiftshader"
+    "--use-gl=egl"
   ]
 }

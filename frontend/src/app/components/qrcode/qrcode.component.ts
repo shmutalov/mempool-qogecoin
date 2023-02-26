@@ -1,6 +1,6 @@
 import { Component, Input, AfterViewInit, ViewChild, ElementRef, ChangeDetectionStrategy } from '@angular/core';
 import * as QRCode from 'qrcode';
-import { StateService } from 'src/app/services/state.service';
+import { StateService } from '../../services/state.service';
 
 @Component({
   selector: 'app-qrcode',
@@ -12,6 +12,7 @@ export class QrcodeComponent implements AfterViewInit {
   @Input() data: string;
   @Input() size = 125;
   @Input() imageUrl: string;
+  @Input() border = 0;
   @ViewChild('canvas') canvas: ElementRef;
 
   qrcodeObject: any;

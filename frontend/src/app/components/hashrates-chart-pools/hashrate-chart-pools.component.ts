@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Inject, Input, L
 import { EChartsOption } from 'echarts';
 import { Observable } from 'rxjs';
 import { delay, map, retryWhen, share, startWith, switchMap, tap } from 'rxjs/operators';
-import { ApiService } from 'src/app/services/api.service';
-import { SeoService } from 'src/app/services/seo.service';
-import { FormBuilder, FormGroup } from '@angular/forms';
-import { poolsColor } from 'src/app/app.constants';
-import { StorageService } from 'src/app/services/storage.service';
-import { MiningService } from 'src/app/services/mining.service';
-import { download } from 'src/app/shared/graphs.utils';
+import { ApiService } from '../../services/api.service';
+import { SeoService } from '../../services/seo.service';
+import { UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
+import { chartColors, poolsColor } from '../../app.constants';
+import { StorageService } from '../../services/storage.service';
+import { MiningService } from '../../services/mining.service';
+import { download } from '../../shared/graphs.utils';
 import { ActivatedRoute } from '@angular/router';
 
 @Component({
@@ -30,7 +30,7 @@ export class HashrateChartPoolsComponent implements OnInit {
   @Input() left: number | string = 25;
 
   miningWindowPreference: string;
-  radioGroupForm: FormGroup;
+  radioGroupForm: UntypedFormGroup;
 
   chartOptions: EChartsOption = {};
   chartInitOptions = {
@@ -48,7 +48,7 @@ export class HashrateChartPoolsComponent implements OnInit {
     @Inject(LOCALE_ID) public locale: string,
     private seoService: SeoService,
     private apiService: ApiService,
-    private formBuilder: FormBuilder,
+    private formBuilder: UntypedFormBuilder,
     private cd: ChangeDetectorRef,
     private storageService: StorageService,
     private miningService: MiningService,
@@ -173,6 +173,7 @@ export class HashrateChartPoolsComponent implements OnInit {
     this.chartOptions = {
       title: title,
       animation: false,
+      color: chartColors.filter(color => color !== '#FDD835'),
       grid: {
         right: this.right,
         left: this.left,

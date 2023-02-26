@@ -1,3 +1,6 @@
+import { Price } from '../services/price.service';
+import { IChannel } from './node-api.interface';
+
 export interface Transaction {
   txid: string;
   version: number;
@@ -19,6 +22,14 @@ export interface Transaction {
   deleteAfter?: number;
   _unblinded?: any;
   _deduced?: boolean;
+  _outspends?: Outspend[];
+  _channels?: TransactionChannels;
+  price?: Price;
+}
+
+export interface TransactionChannels {
+  inputs: { [vin: number]: IChannel };
+  outputs: { [vout: number]: IChannel };
 }
 
 interface Ancestor {

@@ -1,4 +1,4 @@
-import { Inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { Inject, Injectable, PLATFORM_ID, LOCALE_ID } from '@angular/core';
 import { ReplaySubject, BehaviorSubject, Subject, fromEvent, Observable } from 'rxjs';
 import { Transaction } from '../interfaces/electrs.interface';
 import { IBackendInfo, MempoolBlock, MempoolBlockWithTransactions, MempoolBlockDelta, MempoolInfo, Recommendedfees, ReplacedTransaction, TransactionStripped } from '../interfaces/websocket.interface';
@@ -6,6 +6,7 @@ import { BlockExtended, DifficultyAdjustment, OptimizedMempoolStats } from '../i
 import { Router, NavigationStart } from '@angular/router';
 import { isPlatformBrowser } from '@angular/common';
 import { map, shareReplay } from 'rxjs/operators';
+import { StorageService } from './storage.service';
 
 interface MarkBlockState {
   blockHeight?: number;
@@ -38,6 +39,10 @@ export interface Env {
   BISQ_WEBSITE_URL: string;
   MINING_DASHBOARD: boolean;
   LIGHTNING: boolean;
+  AUDIT: boolean;
+  MAINNET_BLOCK_AUDIT_START_HEIGHT: number;
+  TESTNET_BLOCK_AUDIT_START_HEIGHT: number;
+  SIGNET_BLOCK_AUDIT_START_HEIGHT: number;
 }
 
 const defaultEnv: Env = {
@@ -63,6 +68,10 @@ const defaultEnv: Env = {
   'BISQ_WEBSITE_URL': 'https://bisq.markets',
   'MINING_DASHBOARD': true,
   'LIGHTNING': false,
+  'AUDIT': false,
+  'MAINNET_BLOCK_AUDIT_START_HEIGHT': 0,
+  'TESTNET_BLOCK_AUDIT_START_HEIGHT': 0,
+  'SIGNET_BLOCK_AUDIT_START_HEIGHT': 0,
 };
 
 @Injectable({
@@ -97,6 +106,7 @@ export class StateService {
   backendInfo$ = new ReplaySubject<IBackendInfo>(1);
   loadingIndicators$ = new ReplaySubject<ILoadingIndicators>(1);
   recommendedFees$ = new ReplaySubject<Recommendedfees>(1);
+  chainTip$ = new ReplaySubject<number>(-1);
 
   live2Chart$ = new Subject<OptimizedMempoolStats>();
 
@@ -104,14 +114,20 @@ export class StateService {
   connectionState$ = new BehaviorSubject<0 | 1 | 2>(2);
   isTabHidden$: Observable<boolean>;
 
-  markBlock$ = new ReplaySubject<MarkBlockState>();
+  markBlock$ = new BehaviorSubject<MarkBlockState>({});
   keyNavigation$ = new Subject<KeyboardEvent>();
 
   blockScrolling$: Subject<boolean> = new Subject<boolean>();
+  timeLtr: BehaviorSubject<boolean>;
+  hideFlow: BehaviorSubject<boolean>;
+  hideAudit: BehaviorSubject<boolean>;
+  fiatCurrency$: BehaviorSubject<string>;
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: any,
+    @Inject(LOCALE_ID) private locale: string,
     private router: Router,
+    private storageService: StorageService,
   ) {
     const browserWindow = window || {};
     // @ts-ignore
@@ -147,13 +163,46 @@ export class StateService {
     }
 
     this.blockVSize = this.env.BLOCK_WEIGHT_UNITS / 4;
+
+    const savedTimePreference = this.storageService.getValue('time-preference-ltr');
+    const rtlLanguage = (this.locale.startsWith('ar') || this.locale.startsWith('fa') || this.locale.startsWith('he'));
+    // default time direction is right-to-left, unless locale is a RTL language
+    this.timeLtr = new BehaviorSubject<boolean>(savedTimePreference === 'true' || (savedTimePreference == null && rtlLanguage));
+    this.timeLtr.subscribe((ltr) => {
+      this.storageService.setValue('time-preference-ltr', ltr ? 'true' : 'false');
+    });
+
+    const savedFlowPreference = this.storageService.getValue('flow-preference');
+    this.hideFlow = new BehaviorSubject<boolean>(savedFlowPreference === 'hide');
+    this.hideFlow.subscribe((hide) => {
+      if (hide) {
+        this.storageService.setValue('flow-preference', hide ? 'hide' : 'show');
+      } else {
+        this.storageService.removeItem('flow-preference');
+      }
+    });
+
+    const savedAuditPreference = this.storageService.getValue('audit-preference');
+    this.hideAudit = new BehaviorSubject<boolean>(savedAuditPreference === 'hide');
+    this.hideAudit.subscribe((hide) => {
+      this.storageService.setValue('audit-preference', hide ? 'hide' : 'show');
+    });
+    
+    const fiatPreference = this.storageService.getValue('fiat-preference');
+    this.fiatCurrency$ = new BehaviorSubject<string>(fiatPreference || 'USD');
   }
 
   setNetworkBasedonUrl(url: string) {
     if (this.env.BASE_MODULE !== 'mempool' && this.env.BASE_MODULE !== 'liquid') {
       return;
     }
-    const networkMatches = url.match(/\/(bisq|testnet|liquidtestnet|liquid|signet)/);
+    // horrible network regex breakdown:
+    // /^\/                                         starts with a forward slash...
+    // (?:[a-z]{2}(?:-[A-Z]{2})?\/)?                optional locale prefix (non-capturing)
+    // (?:preview\/)?                               optional "preview" prefix (non-capturing)
+    // (bisq|testnet|liquidtestnet|liquid|signet)/  network string (captured as networkMatches[1])
+    // ($|\/)                                       network string must end or end with a slash
+    const networkMatches = url.match(/^\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?(?:preview\/)?(bisq|testnet|liquidtestnet|liquid|signet)($|\/)/);
     switch (networkMatches && networkMatches[1]) {
       case 'liquid':
         if (this.network !== 'liquid') {
@@ -235,5 +284,17 @@ export class StateService {
 
   isLiquid() {
     return this.network === 'liquid' || this.network === 'liquidtestnet';
+  }
+
+  resetChainTip() {
+    this.latestBlockHeight = -1;
+    this.chainTip$.next(-1);
+  }
+
+  updateChainTip(height) {
+    if (height > this.latestBlockHeight) {
+      this.latestBlockHeight = height;
+      this.chainTip$.next(height);
+    }
   }
 }

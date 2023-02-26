@@ -43,7 +43,6 @@
   .alliances,
   .enterprise-sponsor,
   .community-integrations-sponsor,
-  .selfhosted-integrations-sponsor,
   .maintainers {
     margin-top: 68px;
     margin-bottom: 68px;
@@ -69,8 +68,8 @@
 
   .community-sponsor {
     img {
-      width: 67px;
-      height: 67px;
+      width: 57px;
+      height: 57px;
     }
   }
 
@@ -117,7 +116,6 @@
   .community-sponsor,
   .project-translators,
   .community-integrations-sponsor,
-  .selfhosted-integrations-sponsor,
   .maintainers {
     .wrapper {
       display: inline-block;
@@ -144,6 +142,13 @@
     margin: 10px auto 20px;
     a img {
       margin: 6px;
+    }
+  }
+
+  .project-translators .wrapper {
+    a img {
+      width: 72px;
+      height: 72px;
     }
   }
 
@@ -193,6 +198,6 @@
 }
 
 .community-integrations-sponsor {
-  max-width: 830px;
+  max-width: 965px;
   margin: auto;
 }

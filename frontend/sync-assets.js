@@ -4,9 +4,13 @@ var fs = require('fs');
 const CONFIG_FILE_NAME = 'mempool-frontend-config.json';
 let configContent = {};
 
-var PATH = 'dist/mempool/browser/en-US/resources/';
-if (process.argv[2] && process.argv[2] === 'dev') {
-  PATH = 'src/resources/';
+var PATH;
+if (process.argv[2]) {
+  PATH = process.argv[2];
+}
+
+if (!PATH) {
+  throw new Error('Resource path argument is not set');
 }
 
 try {
@@ -50,9 +54,13 @@ function downloadMiningPoolLogos() {
   
     response.on('end', () => {
       let response_body = Buffer.concat(chunks_of_data);
-      const poolLogos = JSON.parse(response_body.toString());
-      for (const poolLogo of poolLogos) {
-          download(`${PATH}/mining-pools/${poolLogo.name}`, poolLogo.download_url);
+      try {
+        const poolLogos = JSON.parse(response_body.toString());
+        for (const poolLogo of poolLogos) {
+            download(`${PATH}/mining-pools/${poolLogo.name}`, poolLogo.download_url);
+        }
+      } catch (e) {
+        console.error(`Unable to download mining pool logos. Trying again at next restart. Reason: ${e instanceof Error ? e.message : e}`);
       }
     });
   
@@ -62,7 +70,6 @@ function downloadMiningPoolLogos() {
   })
 }
 
-const poolsJsonUrl = 'https://raw.githubusercontent.com/mempool/mining-pools/master/pools.json';
 let assetsJsonUrl = 'https://raw.githubusercontent.com/mempool/asset_registry_db/master/index.json';
 let assetsMinimalJsonUrl = 'https://raw.githubusercontent.com/mempool/asset_registry_db/master/index.minimal.json';
 
@@ -78,8 +85,6 @@ console.log('Downloading assets');
 download(PATH + 'assets.json', assetsJsonUrl);
 console.log('Downloading assets minimal');
 download(PATH + 'assets.minimal.json', assetsMinimalJsonUrl);
-console.log('Downloading mining pools info');
-download(PATH + 'pools.json', poolsJsonUrl);
 console.log('Downloading testnet assets');
 download(PATH + 'assets-testnet.json', testnetAssetsJsonUrl);
 console.log('Downloading testnet assets minimal');
