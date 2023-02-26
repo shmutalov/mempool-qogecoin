@@ -9,6 +9,7 @@ import BitflyerApi from './price-feeds/bitflyer-api';
 import CoinbaseApi from './price-feeds/coinbase-api';
 import GeminiApi from './price-feeds/gemini-api';
 import KrakenApi from './price-feeds/kraken-api';
+import ExbitronApi from './price-feeds/exbitron-api';
 
 export interface PriceFeed {
   name: string;
@@ -42,6 +43,7 @@ class PriceUpdater {
     this.feeds.push(new CoinbaseApi());
     this.feeds.push(new BitfinexApi());
     this.feeds.push(new GeminiApi());
+    this.feeds.push(new ExbitronApi());
   }
 
   public getEmptyPricesObj(): IConversionRates {
@@ -85,14 +87,14 @@ class PriceUpdater {
         await this.$insertHistoricalPrices();
       }
     } catch (e) {
-      logger.err(`Cannot save BTC prices in db. Reason: ${e instanceof Error ? e.message : e}`, logger.tags.mining);
+      logger.err(`Cannot save QOGE prices in db. Reason: ${e instanceof Error ? e.message : e}`, logger.tags.mining);
     }
 
     this.running = false;
   }
 
   /**
-   * Fetch last BTC price from exchanges, average them, and save it in the database once every hour
+   * Fetch last QOGE price from exchanges, average them, and save it in the database once every hour
    */
   private async $updatePrice(): Promise<void> {
     if (this.lastRun === 0 && config.DATABASE.ENABLED === true) {
@@ -118,14 +120,14 @@ class PriceUpdater {
             if (price > -1 && price < MAX_PRICES[currency]) {
               prices.push(price);
             }
-            logger.debug(`${feed.name} BTC/${currency} price: ${price}`, logger.tags.mining);
+            logger.debug(`${feed.name} QOGE/${currency} price: ${price}`, logger.tags.mining);
           } catch (e) {
-            logger.debug(`Could not fetch BTC/${currency} price at ${feed.name}. Reason: ${(e instanceof Error ? e.message : e)}`, logger.tags.mining);
+            logger.debug(`Could not fetch QOGE/${currency} price at ${feed.name}. Reason: ${(e instanceof Error ? e.message : e)}`, logger.tags.mining);
           }
         }
       }
       if (prices.length === 1) {
-        logger.debug(`Only ${prices.length} feed available for BTC/${currency} price`, logger.tags.mining);
+        logger.debug(`Only ${prices.length} feed available for QOGE/${currency} price`, logger.tags.mining);
       }
 
       // Compute average price, non weighted
@@ -137,7 +139,7 @@ class PriceUpdater {
       }
     }
 
-    logger.info(`Latest BTC fiat averaged price: ${JSON.stringify(this.latestPrices)}`);
+    logger.info(`Latest QOGE fiat averaged price: ${JSON.stringify(this.latestPrices)}`);
 
     if (config.DATABASE.ENABLED === true) {
       // Save everything in db

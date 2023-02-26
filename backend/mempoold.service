@@ -1,0 +1,13 @@
+[Unit]
+Description=mempool qogecoin blockchain explorer
+Documentation=https://github.com/shmutalov/mempool-qogecoin
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/mempool/backend
+ExecStart=/usr/bin/node --max-old-space-size=2048 dist/index.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
